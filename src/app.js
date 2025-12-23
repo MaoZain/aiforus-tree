@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs-extra');
 const config = require('./config');
 const generateRoute = require('./routes/generate');
+const wechatRoute = require('./routes/wechat');
 const cleanupService = require('./services/cleanupService');
 const logger = require('./utils/logger');
 
@@ -27,6 +28,7 @@ app.use(express.static(path.join(process.cwd(), 'public')));
 
 // Routes
 app.use('/tree/generate', generateRoute);
+app.use('/wechat', wechatRoute);
 
 // Health Check
 app.get('/health', (req, res) => {
