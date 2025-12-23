@@ -20,7 +20,7 @@ app.use(cors()); // Allow all CORS by default for this service
 app.use(morgan('combined'));
 app.use(express.json({ limit: config.limits.jsonBody }));
 app.use(express.urlencoded({ extended: true, limit: config.limits.jsonBody }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(process.cwd(), 'public')));
 
 // Routes
 app.use('/tree/generate', generateRoute);
