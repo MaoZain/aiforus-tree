@@ -9,7 +9,7 @@ services:
       - "3033:3033"
     environment:
       - PORT=3033
-      - PUBLIC_URL_PREFIX=https://your-domain.com/generated/
+      - PUBLIC_URL_PREFIX=https://aiforus.tech/generated/
       - CLEANUP_ENABLED=true
       - CLEANUP_CRON=0 * * * *
       - CLEANUP_TTL_HOURS=24
