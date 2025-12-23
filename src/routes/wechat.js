@@ -41,18 +41,34 @@ router.post('/', async (req, res) => {
 
         // 只处理文本消息
         if (message && message.MsgType === 'text') {
-          const userContent = message.Content; // 用户发送的文字，例如 "我爱你"
+          let userContent = message.Content ? message.Content.trim() : '';
           const openId = message.FromUserName;
           const myId = message.ToUserName;
+          
+          let replyContent = '';
+          
+          // 定义触发前缀 (支持中文冒号和英文冒号，或者空格)
+          // 例如: "圣诞树:祝福语", "圣诞树 祝福语", "tree:text"
+          const prefixRegex = /^(圣诞树|tree)[:：\s]*/i;
+          
+          if (prefixRegex.test(userContent)) {
+            // 1. 提取真正的祝福语
+            const wishText = userContent.replace(prefixRegex, '').trim();
+            
+            // 如果用户只发了前缀没发内容，给个默认祝福
+            const finalText = wishText || "圣诞快乐！";
 
-          // 调用生成服务
-          // 注意：这里直接调用 Service，不需要走 HTTP API
-          const generateResult = await generatorService.generate({
-            text: userContent,
-            config: { from: 'wechat' }
-          });
+            // 2. 调用生成服务
+            const generateResult = await generatorService.generate({
+              text: finalText,
+              config: { from: 'wechat' }
+            });
 
-          const replyContent = `您的专属圣诞树已生成！\n\n点击查看：${generateResult.url}\n\n(祝福语：${userContent})`;
+            replyContent = `🎄 您的专属圣诞树已种下！\n\n🔗 点击查收：${generateResult.url}\n\n(祝福语：${finalText})`;
+          } else {
+            // 3. 不符合前缀，回复引导语
+            replyContent = `想要生成专属3D圣诞树吗？🎄\n\n请按格式回复：\n圣诞树：你的祝福语\n\n例如：\n圣诞树：亲爱的，圣诞快乐！`;
+          }
 
           // 构造回复的 XML
           const replyXml = `
