@@ -15,7 +15,10 @@ const app = express();
 fs.ensureDirSync(config.generatedDir);
 
 // Middleware
-app.use(helmet());
+// 修改这里：禁用 contentSecurityPolicy 以允许模板中的内联脚本和样式
+app.use(helmet({
+  contentSecurityPolicy: false
+}));
 app.use(cors()); // Allow all CORS by default for this service
 app.use(morgan('combined'));
 app.use(express.json({ limit: config.limits.jsonBody }));
