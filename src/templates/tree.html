@@ -100,17 +100,24 @@
         <canvas id="webcam-preview"></canvas>
     </div>
     
-    <audio id="bg-music" src="/music/christmas-background-music-free-451689.mp3" loop preload="auto"></audio>
+    <audio id="bg-music" loop preload="auto">
+        <source src="../bg.mp3" type="audio/mpeg">
+    </audio>
     <script>
         (function() {
             const audio = document.getElementById('bg-music');
-            const play = () => {
+            const attemptPlay = () => {
                 audio.play().then(() => {
-                    ['click', 'touchstart', 'keydown'].forEach(e => document.removeEventListener(e, play));
-                }).catch(e => console.log('Autoplay blocked, waiting for interaction'));
+                    console.log('Audio playing');
+                    document.removeEventListener('click', attemptPlay);
+                    document.removeEventListener('touchstart', attemptPlay);
+                    document.removeEventListener('keydown', attemptPlay);
+                }).catch(e => console.log('Audio play failed:', e));
             };
-            play();
-            ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, play));
+            attemptPlay();
+            document.addEventListener('click', attemptPlay);
+            document.addEventListener('touchstart', attemptPlay);
+            document.addEventListener('keydown', attemptPlay);
         })();
     </script>
 
