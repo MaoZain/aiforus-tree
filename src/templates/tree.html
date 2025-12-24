@@ -106,22 +106,25 @@
     <script>
         (function() {
             const audio = document.getElementById('bg-music');
-            audio.addEventListener('error', (e) => {
-                console.error('Audio load error:', e);
-            }, true);
             
-            const attemptPlay = () => {
+            const playMusic = () => {
                 audio.play().then(() => {
-                    console.log('Audio playing');
-                    ['click', 'touchstart', 'keydown'].forEach(e => document.removeEventListener(e, attemptPlay));
-                }).catch(e => console.log('Audio play failed:', e));
+                    // 播放成功，移除事件监听
+                    ['click', 'touchstart', 'keydown'].forEach(e => document.removeEventListener(e, playMusic));
+                }).catch(e => {
+                    // 忽略自动播放被拦截的错误，这是浏览器的正常行为
+                    // 只有非 NotAllowedError 才打印，方便调试其他问题
+                    if (e.name !== 'NotAllowedError') {
+                        console.error('Audio playback error:', e);
+                    }
+                });
             };
-            
-            // 尝试立即播放
-            attemptPlay();
-            
-            // 绑定交互事件
-            ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, attemptPlay));
+
+            // 1. 尝试自动播放
+            playMusic();
+
+            // 2. 绑定交互事件（点击任意位置播放）
+            ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, playMusic));
         })();
     </script>
 
