@@ -101,23 +101,27 @@
     </div>
     
     <audio id="bg-music" loop preload="auto">
-        <source src="../bg.mp3" type="audio/mpeg">
+        <source src="/generated/bg.mp3" type="audio/mpeg">
     </audio>
     <script>
         (function() {
             const audio = document.getElementById('bg-music');
+            audio.addEventListener('error', (e) => {
+                console.error('Audio load error:', e);
+            }, true);
+            
             const attemptPlay = () => {
                 audio.play().then(() => {
                     console.log('Audio playing');
-                    document.removeEventListener('click', attemptPlay);
-                    document.removeEventListener('touchstart', attemptPlay);
-                    document.removeEventListener('keydown', attemptPlay);
+                    ['click', 'touchstart', 'keydown'].forEach(e => document.removeEventListener(e, attemptPlay));
                 }).catch(e => console.log('Audio play failed:', e));
             };
+            
+            // 尝试立即播放
             attemptPlay();
-            document.addEventListener('click', attemptPlay);
-            document.addEventListener('touchstart', attemptPlay);
-            document.addEventListener('keydown', attemptPlay);
+            
+            // 绑定交互事件
+            ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, attemptPlay));
         })();
     </script>
 
