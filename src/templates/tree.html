@@ -74,6 +74,7 @@
     <div id="ui-layer">
         <div id="top-right-controls">
             <div class="control-col" id="col-system">
+                <button id="btn-music" class="control-btn">音乐: 关</button>
             </div>
         </div>
         <input type="file" id="import-input" accept=".json">
@@ -106,25 +107,55 @@
     <script>
         (function() {
             const audio = document.getElementById('bg-music');
+            const btn = document.getElementById('btn-music');
             
-            const playMusic = () => {
+            const updateState = () => {
+                if (audio.paused) {
+                    btn.textContent = '音乐: 关';
+                    btn.style.background = '';
+                    btn.style.color = '';
+                } else {
+                    btn.textContent = '音乐: 开';
+                    btn.style.background = 'rgba(212, 175, 55, 0.2)';
+                    btn.style.color = '#fff';
+                }
+            };
+
+            const removeGlobalListeners = () => {
+                ['click', 'touchstart', 'keydown'].forEach(e => document.removeEventListener(e, tryAutoPlay));
+            };
+
+            const toggleMusic = (e) => {
+                e.stopPropagation();
+                if (audio.paused) {
+                    audio.play().then(() => {
+                        updateState();
+                        removeGlobalListeners();
+                    }).catch(console.error);
+                } else {
+                    audio.pause();
+                    updateState();
+                }
+            };
+
+            const tryAutoPlay = () => {
                 audio.play().then(() => {
-                    // 播放成功，移除事件监听
-                    ['click', 'touchstart', 'keydown'].forEach(e => document.removeEventListener(e, playMusic));
-                }).catch(e => {
-                    // 忽略自动播放被拦截的错误，这是浏览器的正常行为
-                    // 只有非 NotAllowedError 才打印，方便调试其他问题
-                    if (e.name !== 'NotAllowedError') {
-                        console.error('Audio playback error:', e);
-                    }
+                    updateState();
+                    // 播放成功，移除全局交互监听
+                    removeGlobalListeners();
+                }).catch((e) => {
+                    // 忽略自动播放失败，等待用户交互
+                    if (e.name !== 'NotAllowedError') console.error('Audio playback error:', e);
                 });
             };
 
-            // 1. 尝试自动播放
-            playMusic();
+            btn.addEventListener('click', toggleMusic);
 
-            // 2. 绑定交互事件（点击任意位置播放）
-            ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, playMusic));
+            // 1. 尝试自动播放
+            tryAutoPlay();
+
+            // 2. 绑定交互事件（点击任意位置播放，兼容移动端）
+            ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, tryAutoPlay));
         })();
     </script>
 
@@ -160,7 +191,7 @@
             rotation: { x: 0, y: 0 }, spinVel: { x: 0, y: 0 }, time: 0,
             wasPointing: false, palmCenter: { x: 0.5, y: 0.5 }, hasPalmCenter: false,
             starMesh: null, starHaloMesh: null,
-            letterContent: {{LETTER_CONTENT_JSON}}, 
+            // letterContent: {{LETTER_CONTENT_JSON}}, 
             letterTyper: null, letterStartTimer: null, letterLastTriggerTime: 0
         };
 
@@ -726,7 +757,7 @@
                     video.play(); 
                     document.getElementById('webcam-wrapper').style.opacity = 1;
                     const aspect = video.videoWidth / video.videoHeight;
-                    const targetWidth = 120;
+                    const targetWidth = 80;
                     document.getElementById('webcam-wrapper').style.width = targetWidth + 'px';
                     document.getElementById('webcam-wrapper').style.height = (targetWidth / aspect) + 'px';
                     document.getElementById('webcam-preview').width = video.videoWidth;
