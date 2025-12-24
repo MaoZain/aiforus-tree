@@ -126,7 +126,14 @@
             };
 
             const toggleMusic = (e) => {
+                // 阻止事件冒泡，防止触发全局的 tryAutoPlay
                 e.stopPropagation();
+                
+                // 如果是 touchstart，阻止默认行为（防止后续产生 click 事件导致触发两次）
+                if (e.type === 'touchstart') {
+                    e.preventDefault();
+                }
+
                 if (audio.paused) {
                     audio.play().then(() => {
                         updateState();
@@ -138,23 +145,28 @@
                 }
             };
 
-            const tryAutoPlay = () => {
+            const tryAutoPlay = (e) => {
+                // 双重保险：如果事件源是按钮或其子元素，忽略之（虽然 stopPropagation 应该已经拦截了）
+                if (e && e.target && (e.target === btn || btn.contains(e.target))) return;
+
                 audio.play().then(() => {
                     updateState();
                     // 播放成功，移除全局交互监听
                     removeGlobalListeners();
-                }).catch((e) => {
+                }).catch((err) => {
                     // 忽略自动播放失败，等待用户交互
-                    if (e.name !== 'NotAllowedError') console.error('Audio playback error:', e);
+                    if (err.name !== 'NotAllowedError') console.error('Audio playback error:', err);
                 });
             };
 
+            // 按钮绑定 touchstart (移动端优先响应) 和 click (桌面端)
+            btn.addEventListener('touchstart', toggleMusic, { passive: false });
             btn.addEventListener('click', toggleMusic);
 
             // 1. 尝试自动播放
             tryAutoPlay();
 
-            // 2. 绑定交互事件（点击任意位置播放，兼容移动端）
+            // 2. 绑定全局交互事件（点击任意空白处播放）
             ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, tryAutoPlay));
         })();
     </script>
@@ -757,7 +769,7 @@
                     video.play(); 
                     document.getElementById('webcam-wrapper').style.opacity = 1;
                     const aspect = video.videoWidth / video.videoHeight;
-                    const targetWidth = 80;
+                    const targetWidth = 60;
                     document.getElementById('webcam-wrapper').style.width = targetWidth + 'px';
                     document.getElementById('webcam-wrapper').style.height = (targetWidth / aspect) + 'px';
                     document.getElementById('webcam-preview').width = video.videoWidth;
