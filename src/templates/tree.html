@@ -29,7 +29,7 @@
         .control-btn:active { transform: scale(0.95); }
         
         /* 隐藏的文件输入框 */
-        #file-input, #music-input, #import-input { display: none; }
+        #file-input, #import-input { display: none; }
 
         /* Webcam */
         #webcam-wrapper { position: absolute; bottom: 20px; right: 20px; opacity: 0; pointer-events: none; border: 1px solid rgba(212, 175, 55, 0.5); border-radius: 4px; background: #000; z-index: 50; display: flex; transition: opacity 0.5s; }
@@ -100,7 +100,19 @@
         <canvas id="webcam-preview"></canvas>
     </div>
     
-    <audio id="bg-music" loop crossorigin="anonymous"></audio>
+    <audio id="bg-music" src="/music/christmas-background-music-free-451689.mp3" loop preload="auto"></audio>
+    <script>
+        (function() {
+            const audio = document.getElementById('bg-music');
+            const play = () => {
+                audio.play().then(() => {
+                    ['click', 'touchstart', 'keydown'].forEach(e => document.removeEventListener(e, play));
+                }).catch(e => console.log('Autoplay blocked, waiting for interaction'));
+            };
+            play();
+            ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, play));
+        })();
+    </script>
 
     <script type="module">
         import * as THREE from 'three';
@@ -134,9 +146,8 @@
             rotation: { x: 0, y: 0 }, spinVel: { x: 0, y: 0 }, time: 0,
             wasPointing: false, palmCenter: { x: 0.5, y: 0.5 }, hasPalmCenter: false,
             starMesh: null, starHaloMesh: null,
-            letterContent: {{LETTER_CONTENT_JSON}}, 
-            letterTyper: null, letterStartTimer: null, letterLastTriggerTime: 0,
-            musicData: null // 用于存储音频Base64以供导出
+            // letterContent: {{LETTER_CONTENT_JSON}}, 
+            letterTyper: null, letterStartTimer: null, letterLastTriggerTime: 0
         };
 
         let scene, camera, renderer, composer, clock = new THREE.Clock();
@@ -392,7 +403,7 @@
             geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 1));
 
             snowSystem = new THREE.Points(geometry, matLib.snowFlake);
-            snowSystem.visible = false; 
+            snowSystem.visible = true; 
             bgGroup.add(snowSystem);
         }
 
@@ -420,14 +431,91 @@
         }
 
         function createStarTopper() {
-            const star = new THREE.Mesh(new THREE.OctahedronGeometry(1.5, 0), matLib.starGold);
-            star.position.set(0, CONFIG.particles.treeHeight/2 + 1.2, 0);
-            const halo = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshBasicMaterial({ 
+            const santaGroup = new THREE.Group();
+            santaGroup.position.set(0, CONFIG.particles.treeHeight/2 + 1.5, 0);
+
+            const matRed = matLib.red;
+            const matWhite = matLib.snow;
+            const matFace = new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.3 });
+            const matBlack = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+
+            // Body
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 2, 8), matRed);
+            santaGroup.add(body);
+
+            // Belt
+            const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 1.22, 0.3, 8), matBlack);
+            santaGroup.add(belt);
+
+            // Head
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 16), matFace);
+            head.position.y = 1.3;
+            santaGroup.add(head);
+
+            // Beard
+            const beard = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 16, 0, Math.PI * 2, 0, Math.PI/2.2), matWhite);
+            beard.position.set(0, 1.1, 0.15);
+            beard.rotation.x = -0.2;
+            santaGroup.add(beard);
+
+            // Mustache
+            const mustacheGroup = new THREE.Group();
+            mustacheGroup.position.set(0, 1.25, 0.65);
+            
+            const mLeft = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.3, 4, 8), matWhite);
+            mLeft.position.set(-0.2, -0.05, 0);
+            mLeft.rotation.set(0, -0.2, 1.0);
+            mustacheGroup.add(mLeft);
+
+            const mRight = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.3, 4, 8), matWhite);
+            mRight.position.set(0.2, -0.05, 0);
+            mRight.rotation.set(0, 0.2, -1.0);
+            mustacheGroup.add(mRight);
+            
+            santaGroup.add(mustacheGroup);
+
+            // Eyes
+            const eyeGeo = new THREE.SphereGeometry(0.06, 8, 8);
+            const eyeLeft = new THREE.Mesh(eyeGeo, matBlack);
+            eyeLeft.position.set(-0.2, 1.45, 0.6);
+            santaGroup.add(eyeLeft);
+
+            const eyeRight = new THREE.Mesh(eyeGeo, matBlack);
+            eyeRight.position.set(0.2, 1.45, 0.6);
+            santaGroup.add(eyeRight);
+
+            // Nose
+            const nose = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffaaaa, roughness: 0.4 }));
+            nose.position.set(0, 1.35, 0.68);
+            santaGroup.add(nose);
+
+            // Hat
+            const hat = new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.5, 16), matRed);
+            hat.position.set(0, 2.2, 0);
+            hat.rotation.x = -0.1;
+            santaGroup.add(hat);
+
+            // Hat Trim
+            const hatTrim = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.15, 8, 16), matWhite);
+            hatTrim.position.set(0, 1.7, 0);
+            hatTrim.rotation.x = -1.6;
+            santaGroup.add(hatTrim);
+
+            // Pompom
+            const pompom = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), matWhite);
+            pompom.position.set(0, 2.9, -0.2);
+            santaGroup.add(pompom);
+
+            // Halo
+            const halo = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.MeshBasicMaterial({ 
                 map: new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/glow.png'), 
-                blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.5, color: 0xffaa00 
+                blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.6, color: 0xffffff 
             }));
-            star.add(halo); starGroup.add(star);
-            STATE.starMesh = star; STATE.starHaloMesh = halo; 
+            santaGroup.add(halo);
+
+            starGroup.add(santaGroup);
+            STATE.starMesh = santaGroup; 
+            STATE.starHaloMesh = halo; 
         }
 
         function switchTheme(themeIndex) {
@@ -436,7 +524,7 @@
             const isGold = (themeIndex === 0);
 
             if (galaxySystem) galaxySystem.visible = isGold;
-            if (snowSystem) snowSystem.visible = !isGold;
+            if (snowSystem) snowSystem.visible = true;
 
             particleSystem.forEach(p => {
                 if (p.isDust) return;
@@ -463,8 +551,7 @@
             });
 
             if (STATE.starMesh && STATE.starHaloMesh) {
-                STATE.starMesh.material = isGold ? matLib.starGold : matLib.starIce;
-                STATE.starHaloMesh.material.color.setHex(isGold ? 0xffaa00 : CONFIG.colors.iceBlue);
+                STATE.starHaloMesh.material.color.setHex(isGold ? 0xffffff : CONFIG.colors.iceBlue);
             }
         }
 
@@ -534,7 +621,6 @@
             }).filter(src => src !== null);
 
             const exportData = {
-                music: STATE.musicData, // Base64 Audio
                 letter: STATE.letterContent,
                 photos: photos,
                 theme: STATE.currentThemeIndex
@@ -556,15 +642,6 @@
                 
                 // 1. 恢复信件
                 if (data.letter) STATE.letterContent = data.letter;
-
-                // 2. 恢复音乐
-                if (data.music) {
-                    STATE.musicData = data.music;
-                    const audioEl = document.getElementById('bg-music');
-                    audioEl.src = data.music;
-                    audioEl.currentTime = 0;
-                    audioEl.play().catch(console.warn);
-                }
 
                 // 3. 恢复照片 (先清空)
                 clearPhotos();
@@ -635,7 +712,9 @@
                     video.play(); 
                     document.getElementById('webcam-wrapper').style.opacity = 1;
                     const aspect = video.videoWidth / video.videoHeight;
-                    document.getElementById('webcam-wrapper').style.height = (120/aspect) + 'px';
+                    const targetWidth = 120;
+                    document.getElementById('webcam-wrapper').style.width = targetWidth + 'px';
+                    document.getElementById('webcam-wrapper').style.height = (targetWidth / aspect) + 'px';
                     document.getElementById('webcam-preview').width = video.videoWidth;
                     document.getElementById('webcam-preview').height = video.videoHeight;
                     predictWebcam(); 
@@ -768,5 +847,12 @@
         }
         init();
     </script>
+
+    <!-- 微信服务号推广 -->
+    <div id="wechat-promo" style="position: absolute; bottom: 10px; left: 0; width: 100%; text-align: center; z-index: 90; pointer-events: none; color: rgba(255, 255, 255, 0.35); font-family: 'Cinzel', serif; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">
+        <p style="margin: 3px 0; color: rgba(212, 175, 55, 0.5); font-weight: 600;">AI 偕行 · 微信服务号</p>
+        <p style="margin: 2px 0;">📘 完整功能介绍，尽在「AI 偕行」</p>
+        <p style="margin: 2px 0;">🔍 更多进阶玩法，欢迎关注查看</p>
+    </div>
 </body>
 </html>
