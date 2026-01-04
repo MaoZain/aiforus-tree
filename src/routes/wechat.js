@@ -67,9 +67,19 @@ router.post("/", async (req, res) => {
               config: { from: "wechat" },
             });
 
-            // 获取基础 URL (从 publicUrlPrefix 中移除 generated/ 部分)
-            const baseUrl = config.publicUrlPrefix.replace('generated/', '');
+            // 获取基础 URL (从 publicUrlPrefix 中移除末尾的 generated/ 部分)
+            // 确保 picUrl 是一个完整的公网可访问地址
+            const baseUrl = config.publicUrlPrefix.endsWith('generated/') 
+              ? config.publicUrlPrefix.slice(0, -10) 
+              : config.publicUrlPrefix.replace(/generated\/?$/, '');
+            
             const picUrl = `${baseUrl}assets/christmas-card-cover.jpg`;
+            
+            logger.info('WeChat News Reply', { 
+              picUrl, 
+              targetUrl: generateResult.url,
+              wishText: finalText 
+            });
 
             // 构造图文消息 (News) XML
             replyXml = `
