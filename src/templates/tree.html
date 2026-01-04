@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Luxury Tree - Winter Magic</title>
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Ma+Shan+Zheng&display=swap');
@@ -166,13 +170,20 @@
             // 1. 尝试自动播放
             tryAutoPlay();
 
-            // 微信环境自动播放修复
-            document.addEventListener("WeixinJSBridgeReady", () => {
-                audio.play().then(() => {
-                    updateState();
-                    removeGlobalListeners();
-                }).catch(() => {});
-            }, false);
+            // 微信环境强制播放修复
+            const fixWechatAudio = () => {
+                if (typeof WeixinJSBridge === "object") {
+                    WeixinJSBridge.invoke('getNetworkType', {}, () => {
+                        audio.play().then(updateState).catch(() => {});
+                    });
+                }
+            };
+
+            if (typeof WeixinJSBridge === "undefined") {
+                document.addEventListener("WeixinJSBridgeReady", fixWechatAudio, false);
+            } else {
+                fixWechatAudio();
+            }
 
             // 2. 绑定全局交互事件（点击任意空白处播放）
             ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, tryAutoPlay));
@@ -242,11 +253,15 @@
             setupEvents();          
             setupLetterSystem(); 
             
-            initMediaPipe().catch(console.warn);
+            // 移除这里的 initMediaPipe 调用，改到 loader 消 disappearance后
 
             const loader = document.getElementById('loader');
             loader.style.opacity = 0;
-            setTimeout(() => loader.remove(), 1200);
+            setTimeout(() => {
+                loader.remove();
+                // 延迟加载重型模型，提升首屏速度
+                setTimeout(() => initMediaPipe().catch(console.warn), 500);
+            }, 1200);
 
             animate(); 
         }
