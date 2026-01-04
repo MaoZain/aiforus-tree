@@ -311,12 +311,12 @@
             spotBlue.position.set(-40, 10, -30); spotBlue.lookAt(0,0,0);
             scene.add(spotBlue);
         }
-            bloom.strength = isMobile ? 0.35 : 0.5; 
-            bloom.radius = isMobile ? 0.3 :
 
         function setupPostProcessing() {
             const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-            bloom.threshold = 0.75; bloom.strength = 0.5; bloom.radius = 0.5;
+            bloom.threshold = 0.75; 
+            bloom.strength = isMobile ? 0.35 : 0.5; 
+            bloom.radius = isMobile ? 0.3 : 0.5;
             composer = new EffectComposer(renderer);
             composer.addPass(new RenderPass(scene, camera));
             composer.addPass(bloom);
