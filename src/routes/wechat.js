@@ -67,19 +67,12 @@ router.post("/", async (req, res) => {
               config: { from: "wechat" },
             });
 
-            // 获取基础 URL (从 publicUrlPrefix 中移除末尾的 generated/ 部分)
-            // 确保 picUrl 是一个完整的公网可访问地址
-            const baseUrl = config.publicUrlPrefix.endsWith('generated/') 
-              ? config.publicUrlPrefix.slice(0, -10) 
-              : config.publicUrlPrefix.replace(/generated\/?$/, '');
-            
-            const picUrl = `https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=900&q=80
-`;
-            
-            logger.info('WeChat News Reply', { 
-              picUrl, 
+            const picUrl = `https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=900&q=80`;
+
+            logger.info("WeChat News Reply", {
+              picUrl,
               targetUrl: generateResult.url,
-              wishText: finalText 
+              wishText: finalText,
             });
 
             // 构造图文消息 (News) XML
@@ -92,8 +85,8 @@ router.post("/", async (req, res) => {
                 <ArticleCount>1</ArticleCount>
                 <Articles>
                   <item>
-                    <Title><![CDATA[🎄 圣诞快乐｜送你一棵专属圣诞树]]></Title>
-                    <Description><![CDATA[${finalText}\n点击打开圣诞贺卡 🎁]]></Description>
+                    <Title><![CDATA[🎄 圣诞快乐]]></Title>
+                    <Description><![CDATA[送你一棵专属圣诞树,${finalText}\n点击打开圣诞贺卡 🎁]]></Description>
                     <PicUrl><![CDATA[${picUrl}]]></PicUrl>
                     <Url><![CDATA[${generateResult.url}]]></Url>
                   </item>
