@@ -199,14 +199,18 @@
         import { FilesetResolver, HandLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
 
         // 1. 全局配置
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         const CONFIG = {
             colors: {
                 bg: 0x020205, gold: 0xffd700, red: 0x880000, green: 0x004400,
                 iceBlue: 0xaaddff, white: 0xffffff 
             },
             particles: { 
-                count: 1800, dustCount: 1500, treeHeight: 28, treeRadius: 9,
-                snowCount: 2000, snowSpeed: 8 
+                count: isMobile ? 800 : 1800, 
+                dustCount: isMobile ? 600 : 1500, 
+                treeHeight: 28, treeRadius: 9,
+                snowCount: isMobile ? 1000 : 2000, 
+                snowSpeed: 8 
             },
             camera: { z: 55 },
             gestures: { palmOpenThreshold: 0.35, sensitivity: 6.0 }
@@ -307,6 +311,8 @@
             spotBlue.position.set(-40, 10, -30); spotBlue.lookAt(0,0,0);
             scene.add(spotBlue);
         }
+            bloom.strength = isMobile ? 0.35 : 0.5; 
+            bloom.radius = isMobile ? 0.3 :
 
         function setupPostProcessing() {
             const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
