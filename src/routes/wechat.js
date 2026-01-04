@@ -73,7 +73,7 @@ router.post("/", async (req, res) => {
               ? config.publicUrlPrefix.slice(0, -10) 
               : config.publicUrlPrefix.replace(/generated\/?$/, '');
             
-            const picUrl = `${baseUrl}assets/christmas-card-cover.jpg`;
+            const picUrl = `assets/christmas-card-cover.jpg`;
             
             logger.info('WeChat News Reply', { 
               picUrl, 
