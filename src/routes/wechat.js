@@ -73,7 +73,8 @@ router.post("/", async (req, res) => {
               ? config.publicUrlPrefix.slice(0, -10) 
               : config.publicUrlPrefix.replace(/generated\/?$/, '');
             
-            const picUrl = `assets/christmas-card-cover.jpg`;
+            const picUrl = `https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=900&q=80
+`;
             
             logger.info('WeChat News Reply', { 
               picUrl, 
