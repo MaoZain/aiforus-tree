@@ -45,7 +45,7 @@ router.post('/', async (req, res) => {
           const openId = message.FromUserName;
           const myId = message.ToUserName;
           
-          let replyContent = '';
+          let replyXml = '';
           
           // 定义触发前缀 (支持中文冒号和英文冒号，或者空格)
           // 例如: "圣诞树:祝福语", "圣诞树 祝福语", "tree:text"
@@ -64,22 +64,37 @@ router.post('/', async (req, res) => {
               config: { from: 'wechat' }
             });
 
-            replyContent = `🎄 您的专属圣诞树已种下！\n\n🔗 点击查收：${generateResult.url}\n\n(祝福语：${finalText})`;
+            // 构造图文消息 (News) XML
+            replyXml = `
+              <xml>
+                <ToUserName><![CDATA[${openId}]]></ToUserName>
+                <FromUserName><![CDATA[${myId}]]></FromUserName>
+                <CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime>
+                <MsgType><![CDATA[news]]></MsgType>
+                <ArticleCount>1</ArticleCount>
+                <Articles>
+                  <item>
+                    <Title><![CDATA[🎄 您的专属圣诞树已种下！]]></Title>
+                    <Description><![CDATA[祝福语：${finalText}\n点击查看您的 3D 圣诞树贺卡]]></Description>
+                    <PicUrl><![CDATA[https://img.freepik.com/free-vector/hand-drawn-christmas-tree-background_23-2148763454.jpg]]></PicUrl>
+                    <Url><![CDATA[${generateResult.url}]]></Url>
+                  </item>
+                </Articles>
+              </xml>
+            `;
           } else {
-            // 3. 不符合前缀，回复引导语
-            replyContent = `想要生成专属3D圣诞树吗？🎄\n\n请按格式回复：\n圣诞树：你的祝福语\n\n例如：\n圣诞树：亲爱的，圣诞快乐！`;
+            // 3. 不符合前缀，回复引导语 (Text)
+            const replyContent = `想要生成专属3D圣诞树吗？🎄\n\n请按格式回复：\n圣诞树：你的祝福语\n\n例如：\n圣诞树：亲爱的，圣诞快乐！`;
+            replyXml = `
+              <xml>
+                <ToUserName><![CDATA[${openId}]]></ToUserName>
+                <FromUserName><![CDATA[${myId}]]></FromUserName>
+                <CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime>
+                <MsgType><![CDATA[text]]></MsgType>
+                <Content><![CDATA[${replyContent}]]></Content>
+              </xml>
+            `;
           }
-
-          // 构造回复的 XML
-          const replyXml = `
-            <xml>
-              <ToUserName><![CDATA[${openId}]]></ToUserName>
-              <FromUserName><![CDATA[${myId}]]></FromUserName>
-              <CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime>
-              <MsgType><![CDATA[text]]></MsgType>
-              <Content><![CDATA[${replyContent}]]></Content>
-            </xml>
-          `;
 
           res.type('application/xml');
           res.send(replyXml);
