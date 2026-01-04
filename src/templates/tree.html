@@ -763,19 +763,46 @@
             video = document.getElementById('webcam'); canvasCtx = document.getElementById('webcam-preview').getContext('2d'); drawingUtils = new DrawingUtils(canvasCtx);
             
             if (navigator.mediaDevices?.getUserMedia) {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: {ideal: 640}, height: {ideal: 480} } });
-                video.srcObject = stream;
-                video.addEventListener("loadeddata", () => { 
-                    video.play(); 
-                    document.getElementById('webcam-wrapper').style.opacity = 1;
-                    const aspect = video.videoWidth / video.videoHeight;
-                    const targetWidth = 60;
-                    document.getElementById('webcam-wrapper').style.width = targetWidth + 'px';
-                    document.getElementById('webcam-wrapper').style.height = (targetWidth / aspect) + 'px';
-                    document.getElementById('webcam-preview').width = video.videoWidth;
-                    document.getElementById('webcam-preview').height = video.videoHeight;
-                    predictWebcam(); 
-                });
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: {ideal: 640}, height: {ideal: 480} } });
+                    video.srcObject = stream;
+
+                    // 立即尝试播放，这对于某些移动浏览器是必要的
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
+                            console.warn("视频自动播放初始尝试失败（在移动端是正常现象）:", error);
+                            // 即使失败，我们仍然依赖 loadeddata 事件
+                        });
+                    }
+
+                    video.addEventListener("loadeddata", () => { 
+                        // 元数据加载后再次尝试播放，此时成功率更高
+                        video.play().then(() => {
+                            document.getElementById('webcam-wrapper').style.opacity = 1;
+                            const aspect = video.videoWidth / video.videoHeight;
+                            const targetWidth = 60;
+                            const wrapper = document.getElementById('webcam-wrapper');
+                            wrapper.style.width = targetWidth + 'px';
+                            wrapper.style.height = (targetWidth / aspect) + 'px';
+                            
+                            const previewCanvas = document.getElementById('webcam-preview');
+                            previewCanvas.width = video.videoWidth;
+                            previewCanvas.height = video.videoHeight;
+                            
+                            predictWebcam(); 
+                        }).catch(error => {
+                            console.error("在 'loadeddata' 事件后播放视频失败:", error);
+                            alert("无法自动播放摄像头视频。请尝试点击屏幕或刷新页面。");
+                        });
+                    });
+                } catch (err) {
+                    console.error("获取摄像头媒体流失败:", err);
+                    alert(`无法访问摄像头。请确保您已授予摄像头权限。\n错误: ${err.name}`);
+                }
+            } else {
+                console.warn("浏览器不支持 getUserMedia");
+                alert("您的浏览器不支持摄像头功能。");
             }
         }
 
