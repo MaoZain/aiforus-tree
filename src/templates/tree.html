@@ -166,6 +166,14 @@
             // 1. 尝试自动播放
             tryAutoPlay();
 
+            // 微信环境自动播放修复
+            document.addEventListener("WeixinJSBridgeReady", () => {
+                audio.play().then(() => {
+                    updateState();
+                    removeGlobalListeners();
+                }).catch(() => {});
+            }, false);
+
             // 2. 绑定全局交互事件（点击任意空白处播放）
             ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, tryAutoPlay));
         })();
