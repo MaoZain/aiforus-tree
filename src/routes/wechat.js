@@ -2,6 +2,7 @@ const express = require("express");
 const crypto = require("crypto");
 const xml2js = require("xml2js");
 const generatorService = require("../services/generatorService");
+const birthdayService = require("../services/birthdayService");
 const config = require("../config");
 const logger = require("../utils/logger");
 
@@ -51,37 +52,23 @@ router.post("/", async (req, res) => {
           let replyXml = "";
 
           // 定义触发前缀 (支持中文冒号和英文冒号，或者空格)
-          // 例如: "圣诞树:祝福语", "圣诞树 祝福语", "tree:text"
-          const prefixRegex = /^(圣诞树|tree)[:：\s]*/i;
+          const treeRegex = /^(圣诞树|tree)[:：\s]*/i;
+          const birthdayRegex = /^(生日|birthday)[:：\s]*/i;
 
-          if (prefixRegex.test(userContent)) {
-            // 1. 提取真正的祝福语
-            const wishText = userContent.replace(prefixRegex, "").trim();
-
-            // 如果用户只发了前缀没发内容，给个默认祝福
+          if (treeRegex.test(userContent)) {
+            // --- 圣诞树逻辑 ---
+            const wishText = userContent.replace(treeRegex, "").trim();
             const finalText = wishText || "圣诞快乐！";
 
-            // 2. 调用生成服务
             const generateResult = await generatorService.generate({
               text: finalText,
               config: { from: "wechat" },
             });
-
-            // 获取基础 URL (从 publicUrlPrefix 中移除末尾的 generated/ 部分)
-            // 确保 picUrl 是一个完整的公网可访问地址
-            const baseUrl = config.publicUrlPrefix.endsWith("generated/")
-              ? config.publicUrlPrefix.slice(0, -10)
-              : config.publicUrlPrefix.replace(/generated\/?$/, "");
-
+            
             const picUrl = `https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=900&q=80`;
 
-            logger.info("WeChat News Reply", {
-              picUrl,
-              targetUrl: generateResult.url,
-              wishText: finalText,
-            });
+            logger.info("WeChat Tree Reply", { targetUrl: generateResult.url, wishText: finalText });
 
-            // 构造图文消息 (News) XML
             replyXml = `
               <xml>
                 <ToUserName><![CDATA[${openId}]]></ToUserName>
@@ -99,9 +86,43 @@ router.post("/", async (req, res) => {
                 </Articles>
               </xml>
             `;
+
+          } else if (birthdayRegex.test(userContent)) {
+            // --- 生日逻辑 ---
+            const wishText = userContent.replace(birthdayRegex, "").trim();
+            const finalText = wishText || "生日快乐！";
+
+            const generateResult = await birthdayService.generate({
+              text: finalText,
+              config: { from: "wechat" },
+            });
+
+            // Birthday themed image
+            const picUrl = `https://images.unsplash.com/photo-1464349153735-7db50ed83c84?auto=format&fit=crop&w=900&q=80`;
+
+            logger.info("WeChat Birthday Reply", { targetUrl: generateResult.url, wishText: finalText });
+
+            replyXml = `
+              <xml>
+                <ToUserName><![CDATA[${openId}]]></ToUserName>
+                <FromUserName><![CDATA[${myId}]]></FromUserName>
+                <CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime>
+                <MsgType><![CDATA[news]]></MsgType>
+                <ArticleCount>1</ArticleCount>
+                <Articles>
+                  <item>
+                    <Title><![CDATA[🎂 生日快乐｜送你一张专属生日卡片]]></Title>
+                    <Description><![CDATA[${finalText}\n点击接收生日祝福 🎉]]></Description>
+                    <PicUrl><![CDATA[${picUrl}]]></PicUrl>
+                    <Url><![CDATA[${generateResult.url}]]></Url>
+                  </item>
+                </Articles>
+              </xml>
+            `;
+
           } else {
             // 3. 不符合前缀，回复引导语 (Text)
-            const replyContent = `想要生成专属3D圣诞树吗？🎄\n\n请按格式回复：\n圣诞树：你的祝福语\n\n例如：\n圣诞树：亲爱的，圣诞快乐！`;
+            const replyContent = `欢迎关注 AI 偕行！\n\n回复【圣诞树：祝福语】\n生成3D圣诞树贺卡 🎄\n\n回复【生日：祝福语】\n生成专属生日祝福网页 🎂\n\n例如：\n圣诞树：圣诞快乐！\n生日：永远18岁！`;
             replyXml = `
               <xml>
                 <ToUserName><![CDATA[${openId}]]></ToUserName>
