@@ -178,8 +178,13 @@
                 <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
             </button>
         </div>
+        <!-- 手势提示 -->
+        <div id="top-left-hint" style="position: absolute; top: 20px; left: 20px; z-index: 30; background: rgba(20, 0, 0, 0.6); border: 1px solid rgba(212, 175, 55, 0.4); color: #d4af37; padding: 10px 15px; border-radius: 5px; font-size: 12px; pointer-events: none; backdrop-filter: blur(5px);">
+            <div>✌️ 胜利手势 → 打开贺卡</div>
+            <div>✋ 张开手掌 → 绽放烟花</div>
+        </div>
         
-        <div id="bottom-text">XXX，今天有好好吃饭吗？</div>
+        <!-- <div id="bottom-text">XXX，今天有好好吃饭吗？</div> -->
     </div>
 <!-- 
     <audio id="bg-music" loop preload="auto">
@@ -449,7 +454,7 @@
                 );
                 handLandmarker = await HandLandmarker.createFromOptions(vision, {
                     baseOptions: {
-                        modelAssetPath: "/public/assets/mediapipe/hand_landmarker.task",
+                        modelAssetPath: "/assets/mediapipe/hand_landmarker.task",
                         delegate: "GPU"
                     },
                     runningMode: "VIDEO",
@@ -1134,5 +1139,11 @@
 
         init();
     </script>
+
+    <div id="wechat-promo" style="position: absolute; bottom: 10px; left: 0; width: 100%; text-align: center; z-index: 90; pointer-events: none; color: rgba(255, 255, 255, 0.35); font-family: 'Cinzel', serif; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">
+        <p style="margin: 3px 0; color: rgba(212, 175, 55, 0.5); font-weight: 600;">AI 偕行 · 微信服务号</p>
+        <p style="margin: 2px 0;">📘 完整功能介绍，尽在「AI 偕行」</p>
+        <p style="margin: 2px 0;">🔍 更多进阶玩法，欢迎关注查看</p>
+    </div>
 </body>
 </html>
