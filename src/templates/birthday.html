@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Ma+Shan+Zheng&family=Zhi+Mang+Xing&family=Gloria+Hallelujah&display=swap');
@@ -218,7 +219,9 @@
         <!-- 手势提示 -->
         <div id="top-left-hint" style="position: absolute; top: 20px; left: 20px; z-index: 30; background: rgba(20, 0, 0, 0.6); border: 1px solid rgba(212, 175, 55, 0.4); color: #d4af37; padding: 10px 15px; border-radius: 5px; font-size: 12px; pointer-events: none; backdrop-filter: blur(5px);">
             <div>✌️ 胜利手势 → 打开贺卡</div>
-            <div>✋ 张开手掌 → 绽放烟花</div>
+            <div>☝️ 食指 → 绽放烟花</div>
+            <div>✋ 张开手掌 → 星系变换</div>
+            <div>✊ 握拳 → 恢复原状</div>
         </div>
         
         <!-- <div id="bottom-text">XXX，今天有好好吃饭吗？</div> -->
@@ -338,6 +341,7 @@
 
         let scene, camera, renderer, composer, clock = new THREE.Clock();
         let mainGroup, happyGroup, birthdayGroup, cakeGroup, particleSystem = [];
+        let isGalaxyMode = false;
         let rockets = []; // Array to manage auto-launching rockets
         let happyLocalHeight = 0, birthdayLocalHeight = 0, cakeLocalHeight = 0, cakeLocalWidth = 0;
         const _tempVec = new THREE.Vector3();
@@ -395,6 +399,8 @@
                 this.mesh = mesh;
                 this.type = type;
                 this.posTarget = posTarget.clone();
+                this.initialPos = posTarget.clone(); // Save initial position for restore
+                
                 this.mesh.position.copy(type === 'FIREWORK' ? posTarget : new THREE.Vector3((Math.random()-0.5)*100, (Math.random()-0.5)*100, (Math.random()-0.5)*100));
                 
                 // Base movement
@@ -410,6 +416,16 @@
                 // Custom data for firework trail
                 this.trailIndex = customData.trailIndex || 0; 
                 this.trailMax = customData.trailMax || 1;
+
+                // Galaxy Mode Data
+                const radius = 10 + Math.random() * 40;
+                const angle = Math.random() * Math.PI * 2;
+                this.galaxyData = {
+                    radius: radius,
+                    angle: angle,
+                    speed: (50 / (radius + 1)) * 0.3, // Inner fast, outer slow
+                    yOffset: (Math.random() - 0.5) * 8
+                };
             }
 
             update(dt, time) {
@@ -436,7 +452,20 @@
                     return;
                 }
 
-                if (this.type === 'PEARL' || this.type === 'GEM') {
+                if (isGalaxyMode) {
+                    const g = this.galaxyData;
+                    g.angle += g.speed * dt;
+                    
+                    const targetX = Math.cos(g.angle) * g.radius;
+                    const targetZ = Math.sin(g.angle) * g.radius;
+                    const targetY = g.yOffset;
+                    
+                    this.mesh.position.lerp(new THREE.Vector3(targetX, targetY, targetZ), 2.0 * dt);
+                    this.mesh.material.emissiveIntensity = 2.0 + Math.sin(time * 5 + this.offset) * 1.0;
+                    return;
+                }
+
+                if (this.type === 'PEARL' || this.type === 'GEM' || this.type === 'CAKE') {
                     // Pearls and gems stay more stable but shimmer
                     const target = this.posTarget;
                     this.mesh.position.lerp(target, 2.0 * dt);
@@ -593,29 +622,22 @@
             const dist = (i, j) => Math.hypot(landmarks[i].x - landmarks[j].x, landmarks[i].y - landmarks[j].y);
 
             // --- Gesture Detection Logic ---
-            // Key Points: 0=wrist, 
-            // Tips: 8(Ind), 12(Mid), 16(Ring), 20(Pinky)
-            // PIP (Second Joint from tip): 6, 10, 14, 18
-            // MCP (Knuckle): 5, 9, 13, 17
-            
-            // Robust Extension Check: Tip is significantly further from wrist than the knuckle (MCP)
             const isFingerExtended = (tip, mcp) => dist(0, tip) > dist(0, mcp) * 1.2; 
-            
-            // Robust Curl Check: Tip is close to wrist or closer than the PIP joint
-            // Or simply: Tip is NOT extended relative to PIP with strict threshold
             const isFingerCurled = (tip, mcp) => dist(0, tip) < dist(0, mcp) * 1.1;
 
             const indexExt = isFingerExtended(8, 5);  // Index
             const midExt   = isFingerExtended(12, 9); // Middle
-            const ringCurled  = isFingerCurled(16, 13); // Ring
-            const pinkyCurled = isFingerCurled(20, 17); // Pinky
+            const ringExt  = isFingerExtended(16, 13); // Ring
+            const pinkyExt = isFingerExtended(20, 17); // Pinky
+            const indexCurled = isFingerCurled(8, 5);
+            const midCurled   = isFingerCurled(12, 9);
+            const ringCurled  = isFingerCurled(16, 13);
+            const pinkyCurled = isFingerCurled(20, 17);
 
-            // A. Check for "Peace / V" Sign (Letter Trigger)
-            // Expect: Index & Mid Extended. Ring & Pinky Folded.
+            // 0. Peace Sign -> Open Letter
             const isPeace = indexExt && midExt && ringCurled && pinkyCurled;
 
             if (isPeace) {
-                // Handle Letter Trigger
                 if (!lastLetterHandPos) {
                     lastLetterHandPos = palmPos;
                     letterHoverStartTime = performance.now();
@@ -624,13 +646,11 @@
                     if (moveDist < HOVER_STABILITY_THRESHOLD) {
                         if (letterHoverStartTime === 0) letterHoverStartTime = performance.now();
                         const elapsed = performance.now() - letterHoverStartTime;
-                        const progress = Math.min(1.0, elapsed / 1000); // 1.0s to open
+                        const progress = Math.min(1.0, elapsed / 1000); 
                         
-                        // Draw UI: Cyan Ring
                         drawLetterUI(palmPos.x * gestureCanvas.width, palmPos.y * gestureCanvas.height, progress);
 
                         if (progress >= 1.0) {
-                            // Open Letter
                             document.getElementById('letter-overlay').classList.add('show');
                             isLetterOpen = true;
                             resetHover(); 
@@ -641,71 +661,93 @@
                         letterHoverStartTime = performance.now();
                     }
                 }
-                // If Peace is detected, don't check for spread/firework to avoid conflict
+                resetHover();
                 return;
             } else {
-                // Reset Letter Timer if gesture lost
                 letterHoverStartTime = 0;
                 lastLetterHandPos = null;
             }
 
-            // B. Check Open Palm (Firework Trigger)
-            // Heuristic: Average distance of tips from wrist should be large relative to palm size (0-9)
-            const palmSize = dist(0, 9);
-            const tips = [8, 12, 16, 20];
-            const avgTipDist = tips.reduce((acc, i) => acc + dist(0, i), 0) / tips.length;
-            const isSpread = avgTipDist > palmSize * 1.6; // Fingers extended
-            
-            if (!isSpread) {
-                resetHover();
-                return;
-            }
+            // 1. Index Finger (1) -> Firework
+            const isOne = indexExt && midCurled && ringCurled && pinkyCurled;
 
-            // Firework Logic (Existing)
-            if (!lastHandPos) {
-                lastHandPos = palmPos;
-                hoverStartTime = performance.now();
-                return;
-            }
+            if (isOne) {
+                if (!lastHandPos) {
+                    lastHandPos = palmPos;
+                    hoverStartTime = performance.now();
+                } else {
+                    const moveDist = Math.hypot(palmPos.x - lastHandPos.x, palmPos.y - lastHandPos.y);
+                    if (moveDist < (isMobile ? 0.05 : 0.03)) { 
+                        if (hoverStartTime === 0) hoverStartTime = performance.now();
+                        const elapsed = performance.now() - hoverStartTime;
+                        const progress = Math.min(1.0, elapsed / HOVER_DURATION);
+                        
+                        // Firework UI (Red/Orange)
+                        drawHoverUI(palmPos.x * gestureCanvas.width, palmPos.y * gestureCanvas.height, progress, '#FF4500'); 
 
-            const moveDist = Math.hypot(palmPos.x - lastHandPos.x, palmPos.y - lastHandPos.y);
-
-            if (moveDist < HOVER_STABILITY_THRESHOLD) {
-                // Stable
-                if (hoverStartTime === 0) hoverStartTime = performance.now();
-                
-                const elapsed = performance.now() - hoverStartTime;
-                const progress = Math.min(1.0, elapsed / HOVER_DURATION);
-
-                // Draw UI
-                drawHoverUI(palmPos.x * gestureCanvas.width, palmPos.y * gestureCanvas.height, progress);
-
-
-                if (progress >= 1.0) {
-                    // Trigger Firework
-                    spawnFireworkAtScreenPos(palmPos.x, palmPos.y);
-                    
-                    // Grand Finale Logic
-                    gestureFireworkCount++;
-                    if (gestureFireworkCount % 3 === 0) {
-                         // Delay finale slightly
-                         setTimeout(triggerGrandFinale, 1000);
+                        if (progress >= 1.0) {
+                            spawnFireworkAtScreenPos(palmPos.x, palmPos.y);
+                            gestureFireworkCount++;
+                            if (gestureFireworkCount % 3 === 0) setTimeout(triggerGrandFinale, 1000);
+                            
+                            resetHover();
+                            hoverStartTime = 0; // Force reset
+                            lastHandPos = null; // Reset stability anchor
+                        }
+                    } else {
+                        lastHandPos = palmPos;
+                        hoverStartTime = performance.now();
                     }
-
-                    resetHover();
-                    hoverStartTime = 0; // Force reset
-                    lastHandPos = null; // Reset stability anchor
                 }
-            } else {
-                // Moved too much
-                lastHandPos = palmPos;
-                hoverStartTime = performance.now(); // Restart timer
+                return;
             }
+
+            // 2. Open Palm (Spread) -> Galaxy Mode
+            const isSpread = indexExt && midExt && ringExt && pinkyExt;
+            
+            if (isSpread) {
+                 if (!isGalaxyMode) {
+                     if (!lastHandPos) {
+                        lastHandPos = palmPos;
+                        hoverStartTime = performance.now();
+                     } else {
+                        const elapsed = performance.now() - hoverStartTime;
+                        const progress = Math.min(1.0, elapsed / 500); // 0.5s fast trigger
+                        // Galaxy UI (Purple)
+                        drawHoverUI(palmPos.x * gestureCanvas.width, palmPos.y * gestureCanvas.height, progress, '#9932CC');
+
+                        if (elapsed > 500) {
+                            isGalaxyMode = true; 
+                            resetHover();
+                        }
+                     }
+                 } else {
+                     // In Galaxy Mode: Hand controls rotation
+                     const rotSpeed = (palmPos.x - 0.5) * 4.0; 
+                     mainGroup.rotation.y += rotSpeed * 0.02;
+                     mainGroup.rotation.x = (palmPos.y - 0.5) * 0.5;
+                 }
+                 return;
+            }
+
+            // 3. Fist -> Restore
+            const isFist = indexCurled && midCurled && ringCurled && pinkyCurled;
+
+            if (isFist && isGalaxyMode) {
+                isGalaxyMode = false;
+                // Tween back to 0
+                new TWEEN.Tween(mainGroup.rotation)
+                    .to({ x: 0, y: 0, z: 0 }, 1000)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .start();
+                resetHover();
+            }
+
+            resetHover();
         }
 
         function drawLetterUI(x, y, progress) {
             gestureCtx.save();
-            // 调整半径：从 20 改为 35
             const radius = isMobile ? 15 : 20; 
             gestureCtx.beginPath();
             gestureCtx.arc(x, y, 6, 0, Math.PI * 2);
@@ -724,7 +766,7 @@
             gestureCtx.lineWidth = 4;
             gestureCtx.stroke();
             
-            // Icon hint (Envelope-ish?)
+            // Icon hint
             gestureCtx.fillStyle = '#00FFFF';
             gestureCtx.font = "16px Arial";
             gestureCtx.textAlign = "center";
@@ -733,26 +775,30 @@
             gestureCtx.restore();
         }
 
-        function drawHoverUI(x, y, progress) {
+        function drawHoverUI(x, y, progress, color = '#FFD700') {
             gestureCtx.save();
             const radius = isMobile ? 15 : 20;
             // Center Dot
             gestureCtx.beginPath();
             gestureCtx.arc(x, y, 6, 0, Math.PI * 2);
-            gestureCtx.fillStyle = '#FFD700'; // Gold
+            gestureCtx.fillStyle = color; 
             gestureCtx.fill();
             
             // Outer Ring Background
             gestureCtx.beginPath();
             gestureCtx.arc(x, y, radius, 0, Math.PI * 2);
-            gestureCtx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+            let strokeColor = 'rgba(255, 255, 255, 0.3)';
+            if (color.startsWith('#') && color.length === 7) {
+                strokeColor = color + '4D'; // Add alpha
+            }
+            gestureCtx.strokeStyle = strokeColor;
             gestureCtx.lineWidth = 4;
             gestureCtx.stroke();
 
             // Progress Arc
             gestureCtx.beginPath();
             gestureCtx.arc(x, y, radius, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress));
-            gestureCtx.strokeStyle = '#FFD700';
+            gestureCtx.strokeStyle = color;
             gestureCtx.lineWidth = 4;
             gestureCtx.stroke();
             
@@ -1159,6 +1205,7 @@
 
         function animate() {
             requestAnimationFrame(animate);
+            TWEEN.update();
             const dt = clock.getDelta();
             const time = clock.elapsedTime;
             
