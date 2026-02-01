@@ -60,6 +60,43 @@
             border-radius: 8px;
             transform: scaleX(-1);
         }
+
+        @media (max-width: 900px) {
+            #webcam {
+                width: 70px !important;
+                bottom: 10px;
+                left: 10px;
+            }
+            .control-btn {
+                width: 32px !important;
+                height: 32px !important;
+            }
+            .control-btn svg {
+                width: 18px !important;
+                height: 18px !important;
+            }
+            #top-left-hint {
+                font-size: 10px !important;
+                padding: 6px 10px !important;
+                top: 10px !important;
+                left: 10px !important;
+            }
+        
+            #ui-layer #top-left-hint {
+                transform: scale(0.85); /* 整体再缩小一点 */
+                transform-origin: top left;
+            }
+        
+            #wechat-promo {
+                bottom: 10px !important; /* 稍微抬高避免被遮挡 */
+                transform: scale(0.7); /* 整体缩小 15% */
+                transform-origin: bottom center;
+            }
+        
+            #wechat-promo p {
+                margin: 2px 0 !important;
+            }
+        }
         /* Gesture UI Overlay */
         #gesture-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 200; pointer-events: none; }
         
@@ -187,76 +224,86 @@
         <!-- <div id="bottom-text">XXX，今天有好好吃饭吗？</div> -->
     </div>
 
-    <!-- <audio id="bg-music" loop preload="auto">
-        <source src="" type="audio/mpeg">
-    </audio> -->
+    <!-- 背景音乐：生日快乐歌 -->
+    <audio id="bg-music" loop preload="auto">
+        <!-- Archive.org 稳定源 -->
+        <source src="https://ia800806.us.archive.org/12/items/happy-birthday-to-you-piano-version/Happy%20Birthday%20To%20You%20%28Piano%20Version%29.mp3" type="audio/mpeg">
+        <source src="https://upload.wikimedia.org/wikipedia/commons/1/12/Happy_Birthday_To_You_-_C_Major_-_Piano.ogg" type="audio/ogg">
+    </audio>
     <script>
         (function() {
             const audio = document.getElementById('bg-music');
             const btn = document.getElementById('btn-music');
-            
+            let isToggling = false; // 播放状态锁，防止并发操作导致 AbortError
+
             const updateState = () => {
                 if (audio.paused) {
-                    btn.textContent = '音乐: 关';
-                    btn.style.background = '';
-                    btn.style.color = '';
+                    btn.style.background = 'rgba(0, 0, 0, 0.4)'; // 暂停时变暗
+                    btn.style.color = 'rgba(255, 255, 255, 0.5)';
+                    btn.style.border = '1px solid rgba(255, 255, 255, 0.3)';
                 } else {
-                    btn.textContent = '音乐: 开';
-                    btn.style.background = 'rgba(212, 175, 55, 0.2)';
+                    btn.style.background = 'rgba(212, 175, 55, 0.6)'; // 播放时高亮
                     btn.style.color = '#fff';
+                    btn.style.border = '1px solid rgba(212, 175, 55, 0.8)';
                 }
             };
+            
+            // 初始化按钮样式
+            updateState();
 
             const removeGlobalListeners = () => {
                 ['click', 'touchstart', 'keydown'].forEach(e => document.removeEventListener(e, tryAutoPlay));
             };
 
-            const toggleMusic = (e) => {
-                // 阻止事件冒泡，防止触发全局的 tryAutoPlay
+            const toggleMusic = async (e) => {
                 e.stopPropagation();
-                
-                // 如果是 touchstart，阻止默认行为（防止后续产生 click 事件导致触发两次）
-                if (e.type === 'touchstart') {
-                    e.preventDefault();
-                }
+                // 防止移动端 click 和 touchstart 重复触发
+                if (e.type === 'touchstart') e.preventDefault();
 
-                if (audio.paused) {
-                    audio.play().then(() => {
-                        updateState();
+                if (isToggling) return;
+                isToggling = true;
+
+                try {
+                    if (audio.paused) {
+                        await audio.play();
                         removeGlobalListeners();
-                    }).catch(console.error);
-                } else {
-                    audio.pause();
+                    } else {
+                        audio.pause();
+                    }
                     updateState();
+                } catch (err) {
+                    console.error('Music toggle failed:', err);
+                } finally {
+                    isToggling = false;
                 }
             };
 
-            const tryAutoPlay = (e) => {
-                // 双重保险：如果事件源是按钮或其子元素，忽略之（虽然 stopPropagation 应该已经拦截了）
+            const tryAutoPlay = async (e) => {
+                // 如果点击的是控制按钮，则忽略，交由 toggleMusic 处理
                 if (e && e.target && (e.target === btn || btn.contains(e.target))) return;
-
-                audio.play().then(() => {
+                
+                if (isToggling || !audio.paused) return; // 已经在播放或正在切换
+                
+                isToggling = true;
+                try {
+                    await audio.play();
                     updateState();
-                    // 播放成功，移除全局交互监听
-                    removeGlobalListeners();
-                }).catch((err) => {
-                    // 忽略自动播放失败，等待用户交互
-                    if (err.name !== 'NotAllowedError') console.error('Audio playback error:', err);
-                });
+                    removeGlobalListeners(); 
+                } catch (err) {
+                    // console.log('Autoplay prevented, waiting for user interaction');
+                } finally {
+                    isToggling = false;
+                }
             };
 
-            // 按钮绑定 touchstart (移动端优先响应) 和 click (桌面端)
             btn.addEventListener('touchstart', toggleMusic, { passive: false });
             btn.addEventListener('click', toggleMusic);
 
-            // 1. 尝试自动播放
-            tryAutoPlay();
-
-            // 微信环境强制播放修复
+            // 微信环境自动播放兼容
             const fixWechatAudio = () => {
                 if (typeof WeixinJSBridge === "object") {
                     WeixinJSBridge.invoke('getNetworkType', {}, () => {
-                        audio.play().then(updateState).catch(() => {});
+                        tryAutoPlay();
                     });
                 }
             };
@@ -267,8 +314,11 @@
                 fixWechatAudio();
             }
 
-            // 2. 绑定全局交互事件（点击任意空白处播放）
+            // 绑定全局点击事件以触发播放
             ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, tryAutoPlay));
+            
+            // 尝试页面加载后立即播放
+            tryAutoPlay();
         })();
     </script>
 
@@ -282,8 +332,8 @@
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         const CONFIG = {
             colors: { bg: 0x000000, gold: 0xFFD700, pink: 0xFF69B4, candle: 0xffffff },
-            particles: { textSpacing: isMobile ? 6 : 4, cakeDensity: isMobile ? 1200 : 2500 },
-            camera: { z: 65 }
+            particles: { textSpacing: isMobile ? 4 : 4, cakeDensity: isMobile ? 1800 : 2500 },
+            camera: { z:isMobile ? 65 : 65 }
         };
 
         let scene, camera, renderer, composer, clock = new THREE.Clock();
@@ -454,7 +504,6 @@
                 );
                 handLandmarker = await HandLandmarker.createFromOptions(vision, {
                     baseOptions: {
-                        // modelAssetPath: "/assets/mediapipe/hand_landmarker.task",
                         modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
                         delegate: "GPU"
                     },
@@ -462,11 +511,45 @@
                     numHands: 1
                 });
                 
-                // Start Webcam
-                const constraints = { video: { facingMode: "user", width: 640, height: 480 } };
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-                video.addEventListener("loadeddata", predictWebcam);
+                // Start Webcam (Updated Logic)
+                if (navigator.mediaDevices?.getUserMedia) {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { 
+                                facingMode: "user", 
+                                width: { ideal: 640 }, 
+                                height: { ideal: 480 } 
+                            },
+                            audio: false 
+                        });
+                        video.srcObject = stream;
+
+                        // 立即尝试播放，这对于某些移动浏览器是必要的
+                        const playPromise = video.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(error => {
+                                console.warn("视频自动播放初始尝试失败（在移动端是正常现象）:", error);
+                                // 即使失败，我们仍然依赖 loadeddata 事件
+                            });
+                        }
+
+                        video.addEventListener("loadeddata", () => { 
+                            // 元数据加载后再次尝试播放，此时成功率更高
+                            video.play().then(() => {
+                                predictWebcam(); 
+                            }).catch(error => {
+                                console.error("在 'loadeddata' 事件后播放视频失败:", error);
+                                alert("无法自动播放摄像头视频。请尝试点击屏幕或刷新页面。");
+                            });
+                        });
+                    } catch (err) {
+                        console.error("获取摄像头媒体流失败:", err);
+                        alert(`无法访问摄像头。请确保您已授予摄像头权限。\n错误: ${err.name}`);
+                    }
+                } else {
+                    console.warn("浏览器不支持 getUserMedia");
+                    alert("您的浏览器不支持摄像头功能。");
+                }
             } catch (error) {
                 console.error("MediaPipe/Webcam init failed:", error);
             }
@@ -622,19 +705,21 @@
 
         function drawLetterUI(x, y, progress) {
             gestureCtx.save();
+            // 调整半径：从 20 改为 35
+            const radius = isMobile ? 15 : 20; 
             gestureCtx.beginPath();
             gestureCtx.arc(x, y, 6, 0, Math.PI * 2);
             gestureCtx.fillStyle = '#00FFFF'; // Cyan for Letter
             gestureCtx.fill();
             
             gestureCtx.beginPath();
-            gestureCtx.arc(x, y, 20, 0, Math.PI * 2);
+            gestureCtx.arc(x, y, radius, 0, Math.PI * 2);
             gestureCtx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
             gestureCtx.lineWidth = 4;
             gestureCtx.stroke();
 
             gestureCtx.beginPath();
-            gestureCtx.arc(x, y, 20, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress));
+            gestureCtx.arc(x, y, radius, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress));
             gestureCtx.strokeStyle = '#00FFFF';
             gestureCtx.lineWidth = 4;
             gestureCtx.stroke();
@@ -650,7 +735,7 @@
 
         function drawHoverUI(x, y, progress) {
             gestureCtx.save();
-            
+            const radius = isMobile ? 15 : 20;
             // Center Dot
             gestureCtx.beginPath();
             gestureCtx.arc(x, y, 6, 0, Math.PI * 2);
@@ -659,14 +744,14 @@
             
             // Outer Ring Background
             gestureCtx.beginPath();
-            gestureCtx.arc(x, y, 20, 0, Math.PI * 2);
+            gestureCtx.arc(x, y, radius, 0, Math.PI * 2);
             gestureCtx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
             gestureCtx.lineWidth = 4;
             gestureCtx.stroke();
 
             // Progress Arc
             gestureCtx.beginPath();
-            gestureCtx.arc(x, y, 20, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress));
+            gestureCtx.arc(x, y, radius, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress));
             gestureCtx.strokeStyle = '#FFD700';
             gestureCtx.lineWidth = 4;
             gestureCtx.stroke();
@@ -1023,18 +1108,33 @@
             const happyTargetH = textTotalTargetH / 2;
             const bdayTargetH = textTotalTargetH / 2;
             
-            const hScale = happyTargetH / happyLocalHeight;
-            const bScale = bdayTargetH / birthdayLocalHeight;
+            let hScale = happyTargetH / happyLocalHeight;
+            let bScale = bdayTargetH / birthdayLocalHeight;
+
+            // --- 新增逻辑：限制字体左右边距 (Width Constraint) ---
+            const estimatedTextOriginalWidth = 140; 
+            const maxTextWidth = visibleWidth * 0.85; // 限制为屏幕宽度的 85%
+            const maxScaleByWidth = maxTextWidth / estimatedTextOriginalWidth;
+
+            hScale = Math.min(hScale, maxScaleByWidth);
+            bScale = Math.min(bScale, maxScaleByWidth);
             
             happyGroup.scale.set(hScale, hScale, hScale);
             birthdayGroup.scale.set(bScale, bScale, bScale);
             
-            // 2. Cake Scale (40% height, 30% width)
+            // 2. Cake Scale (修复蛋糕变形逻辑)
             const cakeTargetH = visibleHeight * 0.4;
-            const cakeTargetW = visibleWidth * 0.3;
+            // 手机上蛋糕可以大一点(0.55)，电脑上小一点(0.3)
+            const cakeWidthRatio = isMobile ? 0.55 : 0.3; 
+            const cakeTargetW = visibleWidth * cakeWidthRatio;
+
             const cakeScaleH = cakeTargetH / cakeLocalHeight;
             const cakeScaleW = cakeTargetW / cakeLocalWidth;
-            cakeGroup.scale.set(cakeScaleW, cakeScaleH, cakeScaleW);
+            
+            // 均匀缩放：取较小值
+            const finalCakeScale = Math.min(cakeScaleH, cakeScaleW);
+
+            cakeGroup.scale.set(finalCakeScale, finalCakeScale, finalCakeScale);
             
             // 3. Positioning
             const topBoundary = visibleHeight / 2;
@@ -1052,7 +1152,7 @@
             
             // Cake Positioning (Bottom 40%)
             const cakeLocalTop = 24; // Peak of crown/candle
-            cakeGroup.position.y = (topBoundary - visibleHeight * 0.5) - (cakeLocalTop * cakeScaleH);
+            cakeGroup.position.y = (topBoundary - visibleHeight * 0.5) - (cakeLocalTop * finalCakeScale);
         }
 
         function animate() {
