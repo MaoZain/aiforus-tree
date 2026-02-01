@@ -186,9 +186,9 @@
         
         <!-- <div id="bottom-text">XXX，今天有好好吃饭吗？</div> -->
     </div>
-<!-- 
-    <audio id="bg-music" loop preload="auto">
-        <source src="./bg.mp3" type="audio/mpeg">
+
+    <!-- <audio id="bg-music" loop preload="auto">
+        <source src="" type="audio/mpeg">
     </audio> -->
     <script>
         (function() {
@@ -454,7 +454,8 @@
                 );
                 handLandmarker = await HandLandmarker.createFromOptions(vision, {
                     baseOptions: {
-                        modelAssetPath: "/assets/mediapipe/hand_landmarker.task",
+                        // modelAssetPath: "/assets/mediapipe/hand_landmarker.task",
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
                         delegate: "GPU"
                     },
                     runningMode: "VIDEO",
