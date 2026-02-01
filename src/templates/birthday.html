@@ -229,9 +229,8 @@
 
     <!-- 背景音乐：生日快乐歌 -->
     <audio id="bg-music" loop preload="auto">
-        <!-- Archive.org 稳定源 -->
-        <source src="https://ia800806.us.archive.org/12/items/happy-birthday-to-you-piano-version/Happy%20Birthday%20To%20You%20%28Piano%20Version%29.mp3" type="audio/mpeg">
-        <source src="https://upload.wikimedia.org/wikipedia/commons/1/12/Happy_Birthday_To_You_-_C_Major_-_Piano.ogg" type="audio/ogg">
+        <source src="../birthday.mp3" type="audio/mpeg">
+        您的浏览器不支持音频元素。
     </audio>
     <script>
         (function() {
@@ -266,19 +265,19 @@
                 if (isToggling) return;
                 isToggling = true;
 
-                try {
-                    if (audio.paused) {
-                        await audio.play();
-                        removeGlobalListeners();
-                    } else {
-                        audio.pause();
-                    }
-                    updateState();
-                } catch (err) {
-                    console.error('Music toggle failed:', err);
-                } finally {
-                    isToggling = false;
-                }
+                // try {
+                //     if (audio.paused) {
+                //         await audio.play();
+                //         removeGlobalListeners();
+                //     } else {
+                //         audio.pause();
+                //     }
+                //     updateState();
+                // } catch (err) {
+                //     console.error('Music toggle failed:', err);
+                // } finally {
+                //     isToggling = false;
+                // }
             };
 
             const tryAutoPlay = async (e) => {
@@ -303,25 +302,25 @@
             btn.addEventListener('click', toggleMusic);
 
             // 微信环境自动播放兼容
-            const fixWechatAudio = () => {
-                if (typeof WeixinJSBridge === "object") {
-                    WeixinJSBridge.invoke('getNetworkType', {}, () => {
-                        tryAutoPlay();
-                    });
-                }
-            };
+            // const fixWechatAudio = () => {
+            //     if (typeof WeixinJSBridge === "object") {
+            //         WeixinJSBridge.invoke('getNetworkType', {}, () => {
+            //             tryAutoPlay();
+            //         });
+            //     }
+            // };
 
-            if (typeof WeixinJSBridge === "undefined") {
-                document.addEventListener("WeixinJSBridgeReady", fixWechatAudio, false);
-            } else {
-                fixWechatAudio();
-            }
+            // if (typeof WeixinJSBridge === "undefined") {
+            //     document.addEventListener("WeixinJSBridgeReady", fixWechatAudio, false);
+            // } else {
+            //     fixWechatAudio();
+            // }
 
             // 绑定全局点击事件以触发播放
-            ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, tryAutoPlay));
+            // ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, tryAutoPlay));
             
             // 尝试页面加载后立即播放
-            tryAutoPlay();
+            // tryAutoPlay();
         })();
     </script>
 
@@ -638,6 +637,10 @@
             const isPeace = indexExt && midExt && ringCurled && pinkyCurled;
 
             if (isPeace) {
+                // Reset other gestures
+                hoverStartTime = 0;
+                lastHandPos = null;
+
                 if (!lastLetterHandPos) {
                     lastLetterHandPos = palmPos;
                     letterHoverStartTime = performance.now();
@@ -653,17 +656,19 @@
                         if (progress >= 1.0) {
                             document.getElementById('letter-overlay').classList.add('show');
                             isLetterOpen = true;
+                            // Reset everything after success
                             resetHover(); 
                             lastLetterHandPos = null;
                         }
                     } else {
+                        // Moved too much, reset/restart timer but keep tracking anchor
                         lastLetterHandPos = palmPos;
                         letterHoverStartTime = performance.now();
                     }
                 }
-                resetHover();
                 return;
             } else {
+                // Lost peace sign
                 letterHoverStartTime = 0;
                 lastLetterHandPos = null;
             }
@@ -1283,9 +1288,9 @@
         };
 
         // 自动播放处理
-        document.addEventListener('click', () => {
-            if (audio.paused) { audio.play(); btnMusic.style.color = '#fff'; btnMusic.style.background = 'rgba(212, 175, 55, 0.4)'; }
-        }, { once: true });
+        // document.addEventListener('click', () => {
+        //     if (audio.paused) { audio.play(); btnMusic.style.color = '#fff'; btnMusic.style.background = 'rgba(212, 175, 55, 0.4)'; }
+        // }, { once: true });
 
         init();
     </script>
