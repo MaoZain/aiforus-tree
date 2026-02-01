@@ -265,19 +265,19 @@
                 if (isToggling) return;
                 isToggling = true;
 
-                // try {
-                //     if (audio.paused) {
-                //         await audio.play();
-                //         removeGlobalListeners();
-                //     } else {
-                //         audio.pause();
-                //     }
-                //     updateState();
-                // } catch (err) {
-                //     console.error('Music toggle failed:', err);
-                // } finally {
-                //     isToggling = false;
-                // }
+                try {
+                    if (audio.paused) {
+                        await audio.play();
+                        removeGlobalListeners();
+                    } else {
+                        audio.pause();
+                    }
+                    updateState();
+                } catch (err) {
+                    console.error('Music toggle failed:', err);
+                } finally {
+                    isToggling = false;
+                }
             };
 
             const tryAutoPlay = async (e) => {
@@ -302,25 +302,25 @@
             btn.addEventListener('click', toggleMusic);
 
             // 微信环境自动播放兼容
-            // const fixWechatAudio = () => {
-            //     if (typeof WeixinJSBridge === "object") {
-            //         WeixinJSBridge.invoke('getNetworkType', {}, () => {
-            //             tryAutoPlay();
-            //         });
-            //     }
-            // };
+            const fixWechatAudio = () => {
+                if (typeof WeixinJSBridge === "object") {
+                    WeixinJSBridge.invoke('getNetworkType', {}, () => {
+                        tryAutoPlay();
+                    });
+                }
+            };
 
-            // if (typeof WeixinJSBridge === "undefined") {
-            //     document.addEventListener("WeixinJSBridgeReady", fixWechatAudio, false);
-            // } else {
-            //     fixWechatAudio();
-            // }
+            if (typeof WeixinJSBridge === "undefined") {
+                document.addEventListener("WeixinJSBridgeReady", fixWechatAudio, false);
+            } else {
+                fixWechatAudio();
+            }
 
             // 绑定全局点击事件以触发播放
-            // ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, tryAutoPlay));
+            ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, tryAutoPlay));
             
             // 尝试页面加载后立即播放
-            // tryAutoPlay();
+            tryAutoPlay();
         })();
     </script>
 
@@ -1288,9 +1288,9 @@
         };
 
         // 自动播放处理
-        // document.addEventListener('click', () => {
-        //     if (audio.paused) { audio.play(); btnMusic.style.color = '#fff'; btnMusic.style.background = 'rgba(212, 175, 55, 0.4)'; }
-        // }, { once: true });
+        document.addEventListener('click', () => {
+            if (audio.paused) { audio.play(); btnMusic.style.color = '#fff'; btnMusic.style.background = 'rgba(212, 175, 55, 0.4)'; }
+        }, { once: true });
 
         init();
     </script>
