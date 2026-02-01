@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Happy Birthday - Celebration Magic</title>
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Ma+Shan+Zheng&family=Zhi+Mang+Xing&family=Gloria+Hallelujah&display=swap');
+
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Cinzel', serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; z-index: 1; }
+        
+        /* UI Layer */
+        #ui-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        
+        /* Loader */
+        #loader { position: absolute; width: 100%; height: 100%; background: #000; z-index: 100; display: flex; align-items: center; justify-content: center; transition: opacity 1.2s; pointer-events: none; }
+        .spinner { width: 40px; height: 40px; border: 2px solid rgba(255, 215, 0, 0.1); border-top: 2px solid #ffd700; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Controls */
+        #top-right-controls { position: absolute; top: 30px; right: 30px; z-index: 30; display: flex; gap: 15px; pointer-events: auto; }
+        .control-btn { background: rgba(20, 20, 20, 0.6); border: 1px solid rgba(212, 175, 55, 0.4); color: #d4af37; width: 36px; height: 36px; border-radius: 5px; cursor: pointer; backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
+        .control-btn svg { width: 20px; height: 20px; fill: currentColor; }
+        .control-btn:hover { background: rgba(212, 175, 55, 0.2); border-color: #d4af37; transform: scale(1.1); }
+
+        /* Bottom Text */
+        #bottom-text { position: absolute; bottom: 5%; left: 0; width: 100%; text-align: center; color: #fff; font-family: "Microsoft YaHei", sans-serif; font-size: 18px; letter-spacing: 2px; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 105, 180, 0.3); animation: softGlow 3s ease-in-out infinite; pointer-events: none; z-index: 20; opacity: 0.8; }
+        @keyframes softGlow { 0%, 100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.02); filter: brightness(1.3); } }
+
+        /* Hide anything else */
+        #gesture-hint, #webcam-wrapper, #letter-editor-modal { display: none !important; }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm"
+            }
+        }
+    </script>
+    <style>
+        /* Webcam visible bottom-left */
+        #webcam { 
+            position: absolute; 
+            bottom: 20px; 
+            left: 20px; 
+            width: 160px; 
+            height: auto; 
+            opacity: 0.7; 
+            z-index: 200; 
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            border-radius: 8px;
+            transform: scaleX(-1);
+        }
+        /* Gesture UI Overlay */
+        #gesture-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 200; pointer-events: none; }
+        
+        /* Firework Label */
+        .firework-label {
+            position: absolute;
+            background-color: rgba(240, 0, 86, 0.7); /* #f00056 with 70% opacity */
+            color: #fff; /* White text for visibility against pink */
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: "Microsoft YaHei", sans-serif;
+            pointer-events: none;
+            z-index: 300;
+            white-space: nowrap;
+            transform: translate(-50%, -50%);
+            animation: fadeInOut 2s ease-in-out forwards;
+            box-shadow: 0 0 10px rgba(240, 0, 86, 0.5);
+        }
+        
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            20% { opacity: 1; transform: translate(-50%, -60%) scale(1.1); }
+            80% { opacity: 1; transform: translate(-50%, -70%) scale(1.0); }
+            100% { opacity: 0; transform: translate(-50%, -80%) scale(0.9); }
+        }
+
+        /* Letter Overlay */
+        #letter-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        #letter-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .letter-container {
+            background: #fff;
+            width: 90%;
+            max-width: 600px;
+            height: 80%;
+            padding: 40px;
+            box-sizing: border-box;
+            border-radius: 4px;
+            box-shadow: 0 0 30px rgba(255,255,255,0.2);
+            font-family: "Ma Shan Zheng", cursive, serif;
+            color: #333;
+            overflow-y: auto;
+            position: relative;
+            transform: scale(0.8);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* Old paper texture effect */
+            background-color: #f4e4bc;
+            background-image: linear-gradient(#e8dcb9 1px, transparent 1px);
+            background-size: 100% 30px;
+            line-height: 30px;
+        }
+        #letter-overlay.show .letter-container {
+            transform: scale(1);
+        }
+        .letter-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #8b4513;
+            font-family: sans-serif;
+            font-weight: bold;
+        }
+        .letter-content p {
+            font-size: 20px;
+            text-indent: 2em;
+            margin-bottom: 30px;
+        }
+        .letter-signature {
+            text-align: right;
+            margin-top: 50px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Webcam Elements -->
+    <video id="webcam" playsinline autoplay></video>
+    <canvas id="gesture-canvas"></canvas>
+
+    <!-- Letter Overlay -->
+    <div id="letter-overlay">
+        <div class="letter-container">
+            <div class="letter-close" onclick="closeLetter()">×</div>
+            <div class="letter-content" id="letter-text">
+                <p>亲爱的 XXX：</p>
+                <p>展信佳。</p>
+                <p>当你看到这封信的时候，应该已经感受到了刚刚那场为你准备的烟花盛宴吧。虽然它们在屏幕上只绽放了短短的瞬间，但每一束光里可以都藏着我想要对你说的话。</p>
+                <p>生日快乐呀！在这个特别的日子里，希望你所有许下的愿望都能像那些烟花一样，在未来的日子里闪闪发光，一一实现。</p>
+                <p>愿你三冬暖，愿你春不寒；愿你天黑有灯，下雨有伞；愿你一路上，有良人相伴。</p>
+                <p>记得要好好吃饭，好好睡觉，好好爱自己。</p>
+                <div class="letter-signature">爱你的朋友</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loader"><div class="spinner"></div></div>
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div id="top-right-controls">
+            <button id="btn-music" class="control-btn" title="音乐">
+                <!-- Speaker Icon -->
+                <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            </button>
+        </div>
+        
+        <div id="bottom-text">XXX，今天有好好吃饭吗？</div>
+    </div>
+<!-- 
+    <audio id="bg-music" loop preload="auto">
+        <source src="./bg.mp3" type="audio/mpeg">
+    </audio> -->
+    <script>
+        (function() {
+            const audio = document.getElementById('bg-music');
+            const btn = document.getElementById('btn-music');
+            
+            const updateState = () => {
+                if (audio.paused) {
+                    btn.textContent = '音乐: 关';
+                    btn.style.background = '';
+                    btn.style.color = '';
+                } else {
+                    btn.textContent = '音乐: 开';
+                    btn.style.background = 'rgba(212, 175, 55, 0.2)';
+                    btn.style.color = '#fff';
+                }
+            };
+
+            const removeGlobalListeners = () => {
+                ['click', 'touchstart', 'keydown'].forEach(e => document.removeEventListener(e, tryAutoPlay));
+            };
+
+            const toggleMusic = (e) => {
+                // 阻止事件冒泡，防止触发全局的 tryAutoPlay
+                e.stopPropagation();
+                
+                // 如果是 touchstart，阻止默认行为（防止后续产生 click 事件导致触发两次）
+                if (e.type === 'touchstart') {
+                    e.preventDefault();
+                }
+
+                if (audio.paused) {
+                    audio.play().then(() => {
+                        updateState();
+                        removeGlobalListeners();
+                    }).catch(console.error);
+                } else {
+                    audio.pause();
+                    updateState();
+                }
+            };
+
+            const tryAutoPlay = (e) => {
+                // 双重保险：如果事件源是按钮或其子元素，忽略之（虽然 stopPropagation 应该已经拦截了）
+                if (e && e.target && (e.target === btn || btn.contains(e.target))) return;
+
+                audio.play().then(() => {
+                    updateState();
+                    // 播放成功，移除全局交互监听
+                    removeGlobalListeners();
+                }).catch((err) => {
+                    // 忽略自动播放失败，等待用户交互
+                    if (err.name !== 'NotAllowedError') console.error('Audio playback error:', err);
+                });
+            };
+
+            // 按钮绑定 touchstart (移动端优先响应) 和 click (桌面端)
+            btn.addEventListener('touchstart', toggleMusic, { passive: false });
+            btn.addEventListener('click', toggleMusic);
+
+            // 1. 尝试自动播放
+            tryAutoPlay();
+
+            // 微信环境强制播放修复
+            const fixWechatAudio = () => {
+                if (typeof WeixinJSBridge === "object") {
+                    WeixinJSBridge.invoke('getNetworkType', {}, () => {
+                        audio.play().then(updateState).catch(() => {});
+                    });
+                }
+            };
+
+            if (typeof WeixinJSBridge === "undefined") {
+                document.addEventListener("WeixinJSBridgeReady", fixWechatAudio, false);
+            } else {
+                fixWechatAudio();
+            }
+
+            // 2. 绑定全局交互事件（点击任意空白处播放）
+            ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, tryAutoPlay));
+        })();
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
+
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const CONFIG = {
+            colors: { bg: 0x000000, gold: 0xFFD700, pink: 0xFF69B4, candle: 0xffffff },
+            particles: { textSpacing: isMobile ? 6 : 4, cakeDensity: isMobile ? 1200 : 2500 },
+            camera: { z: 65 }
+        };
+
+        let scene, camera, renderer, composer, clock = new THREE.Clock();
+        let mainGroup, happyGroup, birthdayGroup, cakeGroup, particleSystem = [];
+        let rockets = []; // Array to manage auto-launching rockets
+        let happyLocalHeight = 0, birthdayLocalHeight = 0, cakeLocalHeight = 0, cakeLocalWidth = 0;
+        const _tempVec = new THREE.Vector3();
+
+        // Gesture Globals
+        let handLandmarker;
+        const video = document.getElementById('webcam');
+        const gestureCanvas = document.getElementById('gesture-canvas');
+        const gestureCtx = gestureCanvas.getContext('2d');
+        let hoverStartTime = 0;
+        let lastHandPos = null;
+        let lastLetterHandPos = null; // Separate anchor for letter gesture
+        let letterHoverStartTime = 0;
+        const HOVER_DURATION = 800; // 3s
+        // Sensitivity: 0.02 means 2% of screen width movement allowed
+        const HOVER_STABILITY_THRESHOLD = 0.03; 
+        
+        let gestureFireworkCount = 0; // Counter for grand finale
+        let isLetterOpen = false; // Interaction Lock
+
+        // Expose to window for onclick
+        window.closeLetter = function() {
+            const overlay = document.getElementById('letter-overlay');
+            overlay.classList.remove('show');
+            isLetterOpen = false;
+        };
+
+        function getTextPoints(text, fontSize, spacing) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 1024; canvas.height = 200;
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${fontSize}px "Cinzel", serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const points = [];
+            for (let y = 0; y < canvas.height; y += spacing) {
+                for (let x = 0; x < canvas.width; x += spacing) {
+                    if (imageData.data[(y * canvas.width + x) * 4] > 128) {
+                        points.push({
+                            x: (x - canvas.width / 2) * 0.15,
+                            y: -(y - canvas.height / 2) * 0.15
+                        });
+                    }
+                }
+            }
+            return points;
+        }
+
+        class Particle {
+            constructor(mesh, posTarget, type = 'TEXT', customData = {}) {
+                this.mesh = mesh;
+                this.type = type;
+                this.posTarget = posTarget.clone();
+                this.mesh.position.copy(type === 'FIREWORK' ? posTarget : new THREE.Vector3((Math.random()-0.5)*100, (Math.random()-0.5)*100, (Math.random()-0.5)*100));
+                
+                // Base movement
+                this.offset = Math.random() * Math.PI * 2;
+                this.speed = 0.5 + Math.random();
+                this.shimmerSpeed = 2 + Math.random() * 3;
+                this.brightnessOffset = Math.random();
+
+                // Firework Physics
+                this.velocity = new THREE.Vector3();
+                this.life = 1.0;
+                
+                // Custom data for firework trail
+                this.trailIndex = customData.trailIndex || 0; 
+                this.trailMax = customData.trailMax || 1;
+            }
+
+            update(dt, time) {
+                if (this.type === 'FIREWORK') {
+                    this.life -= dt * 0.8; // Fade over ~2.5s
+                    // No gravity: this.velocity.y -= 25 * dt; 
+                    this.velocity.multiplyScalar(0.98); // Air drag
+                    this.mesh.position.addScaledVector(this.velocity, dt);
+
+                    // Opacity Logic: Head brightest
+                    const trailFactor = 1.0 - (this.trailIndex / this.trailMax);
+                    const alpha = Math.pow(trailFactor, 2) * Math.max(0, this.life);
+                    
+                    this.mesh.material.opacity = alpha;
+                    this.mesh.material.emissiveIntensity = alpha * 3.0; // Bright head
+                    this.mesh.visible = (this.life > 0);
+                    
+                    // Scale: Head large, tail small (Reduced size by half from 1.0 range to 0.5 range)
+                    // Original was 0.5 + 0.5*factor -> range 0.5-1.0
+                    // New: 0.25 + 0.25*factor -> range 0.25-0.5
+                    const scale = 0.25 + (0.25 * trailFactor);
+                    this.mesh.scale.setScalar(scale);
+
+                    return;
+                }
+
+                if (this.type === 'PEARL' || this.type === 'GEM') {
+                    // Pearls and gems stay more stable but shimmer
+                    const target = this.posTarget;
+                    this.mesh.position.lerp(target, 2.0 * dt);
+                } else {
+                    _tempVec.copy(this.posTarget);
+                    // Ethereal floating motion
+                    _tempVec.y += Math.sin(time * this.speed + this.offset) * 0.15;
+                    _tempVec.x += Math.cos(time * 0.6 * this.speed + this.offset) * 0.1;
+                    _tempVec.z += Math.sin(time * 0.4 * this.speed + this.offset) * 0.1;
+                    this.mesh.position.lerp(_tempVec, 1.2 * dt);
+                }
+
+                // Shimmering effect
+                const shimmer = Math.sin(time * this.shimmerSpeed + this.offset * 10);
+                const baseIntensity = (this.type === 'TEXT' || this.type === 'GEM' || this.type === 'FLAME') ? 1.5 : 0.6;
+                this.mesh.material.emissiveIntensity = baseIntensity + shimmer * 0.5;
+            }
+        }
+
+        async function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(CONFIG.colors.bg);
+
+            camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, CONFIG.camera.z);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            mainGroup = new THREE.Group();
+            happyGroup = new THREE.Group();
+            birthdayGroup = new THREE.Group();
+            cakeGroup = new THREE.Group();
+            mainGroup.add(happyGroup);
+            mainGroup.add(birthdayGroup);
+            mainGroup.add(cakeGroup);
+            scene.add(mainGroup);
+
+            setupLights();
+            createParticles();
+            setupPostProcessing();
+
+            window.addEventListener('resize', onWindowResize);
+            onWindowResize(); 
+            
+            const loader = document.getElementById('loader');
+            setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 1200); }, 500);
+
+            initMediaPipe();
+            
+            // Start Auto Firework Timer (Every 4 seconds)
+            setInterval(launchAutoFirework, 4000);
+
+            animate();
+        }
+
+        async function initMediaPipe() {
+            try {
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+                );
+                handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "/public/assets/mediapipe/hand_landmarker.task",
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numHands: 1
+                });
+                
+                // Start Webcam
+                const constraints = { video: { facingMode: "user", width: 640, height: 480 } };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                video.addEventListener("loadeddata", predictWebcam);
+            } catch (error) {
+                console.error("MediaPipe/Webcam init failed:", error);
+            }
+        }
+
+        let lastVideoTime = -1;
+        async function predictWebcam() {
+            if (video.currentTime !== lastVideoTime && handLandmarker) {
+                lastVideoTime = video.currentTime;
+                const result = handLandmarker.detectForVideo(video, performance.now());
+                
+                // Clear UI Canvas
+                gestureCtx.clearRect(0, 0, gestureCanvas.width, gestureCanvas.height);
+                
+                if (result.landmarks && result.landmarks.length > 0) {
+                    processGestures(result.landmarks[0]);
+                } else {
+                    // No hand detected, reset hover
+                    resetHover();
+                }
+            }
+            requestAnimationFrame(predictWebcam);
+        }
+
+        function resetHover() {
+            hoverStartTime = 0;
+            // Also reset letter timer if hand lost
+            letterHoverStartTime = 0;
+        }
+
+        function processGestures(landmarks) {
+            // Stop processing if letter is already open
+            if (isLetterOpen) return;
+
+            // Mirror x
+            const palmX = 1.0 - landmarks[9].x; 
+            const palmY = landmarks[9].y;
+            const palmPos = { x: palmX, y: palmY };
+
+            // Helper for distance
+            const dist = (i, j) => Math.hypot(landmarks[i].x - landmarks[j].x, landmarks[i].y - landmarks[j].y);
+
+            // --- Gesture Detection Logic ---
+            // Key Points: 0=wrist, 
+            // Tips: 8(Ind), 12(Mid), 16(Ring), 20(Pinky)
+            // PIP (Second Joint from tip): 6, 10, 14, 18
+            // MCP (Knuckle): 5, 9, 13, 17
+            
+            // Robust Extension Check: Tip is significantly further from wrist than the knuckle (MCP)
+            const isFingerExtended = (tip, mcp) => dist(0, tip) > dist(0, mcp) * 1.2; 
+            
+            // Robust Curl Check: Tip is close to wrist or closer than the PIP joint
+            // Or simply: Tip is NOT extended relative to PIP with strict threshold
+            const isFingerCurled = (tip, mcp) => dist(0, tip) < dist(0, mcp) * 1.1;
+
+            const indexExt = isFingerExtended(8, 5);  // Index
+            const midExt   = isFingerExtended(12, 9); // Middle
+            const ringCurled  = isFingerCurled(16, 13); // Ring
+            const pinkyCurled = isFingerCurled(20, 17); // Pinky
+
+            // A. Check for "Peace / V" Sign (Letter Trigger)
+            // Expect: Index & Mid Extended. Ring & Pinky Folded.
+            const isPeace = indexExt && midExt && ringCurled && pinkyCurled;
+
+            if (isPeace) {
+                // Handle Letter Trigger
+                if (!lastLetterHandPos) {
+                    lastLetterHandPos = palmPos;
+                    letterHoverStartTime = performance.now();
+                } else {
+                    const moveDist = Math.hypot(palmPos.x - lastLetterHandPos.x, palmPos.y - lastLetterHandPos.y);
+                    if (moveDist < HOVER_STABILITY_THRESHOLD) {
+                        if (letterHoverStartTime === 0) letterHoverStartTime = performance.now();
+                        const elapsed = performance.now() - letterHoverStartTime;
+                        const progress = Math.min(1.0, elapsed / 1000); // 1.0s to open
+                        
+                        // Draw UI: Cyan Ring
+                        drawLetterUI(palmPos.x * gestureCanvas.width, palmPos.y * gestureCanvas.height, progress);
+
+                        if (progress >= 1.0) {
+                            // Open Letter
+                            document.getElementById('letter-overlay').classList.add('show');
+                            isLetterOpen = true;
+                            resetHover(); 
+                            lastLetterHandPos = null;
+                        }
+                    } else {
+                        lastLetterHandPos = palmPos;
+                        letterHoverStartTime = performance.now();
+                    }
+                }
+                // If Peace is detected, don't check for spread/firework to avoid conflict
+                return;
+            } else {
+                // Reset Letter Timer if gesture lost
+                letterHoverStartTime = 0;
+                lastLetterHandPos = null;
+            }
+
+            // B. Check Open Palm (Firework Trigger)
+            // Heuristic: Average distance of tips from wrist should be large relative to palm size (0-9)
+            const palmSize = dist(0, 9);
+            const tips = [8, 12, 16, 20];
+            const avgTipDist = tips.reduce((acc, i) => acc + dist(0, i), 0) / tips.length;
+            const isSpread = avgTipDist > palmSize * 1.6; // Fingers extended
+            
+            if (!isSpread) {
+                resetHover();
+                return;
+            }
+
+            // Firework Logic (Existing)
+            if (!lastHandPos) {
+                lastHandPos = palmPos;
+                hoverStartTime = performance.now();
+                return;
+            }
+
+            const moveDist = Math.hypot(palmPos.x - lastHandPos.x, palmPos.y - lastHandPos.y);
+
+            if (moveDist < HOVER_STABILITY_THRESHOLD) {
+                // Stable
+                if (hoverStartTime === 0) hoverStartTime = performance.now();
+                
+                const elapsed = performance.now() - hoverStartTime;
+                const progress = Math.min(1.0, elapsed / HOVER_DURATION);
+
+                // Draw UI
+                drawHoverUI(palmPos.x * gestureCanvas.width, palmPos.y * gestureCanvas.height, progress);
+
+
+                if (progress >= 1.0) {
+                    // Trigger Firework
+                    spawnFireworkAtScreenPos(palmPos.x, palmPos.y);
+                    
+                    // Grand Finale Logic
+                    gestureFireworkCount++;
+                    if (gestureFireworkCount % 3 === 0) {
+                         // Delay finale slightly
+                         setTimeout(triggerGrandFinale, 1000);
+                    }
+
+                    resetHover();
+                    hoverStartTime = 0; // Force reset
+                    lastHandPos = null; // Reset stability anchor
+                }
+            } else {
+                // Moved too much
+                lastHandPos = palmPos;
+                hoverStartTime = performance.now(); // Restart timer
+            }
+        }
+
+        function drawLetterUI(x, y, progress) {
+            gestureCtx.save();
+            gestureCtx.beginPath();
+            gestureCtx.arc(x, y, 6, 0, Math.PI * 2);
+            gestureCtx.fillStyle = '#00FFFF'; // Cyan for Letter
+            gestureCtx.fill();
+            
+            gestureCtx.beginPath();
+            gestureCtx.arc(x, y, 20, 0, Math.PI * 2);
+            gestureCtx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+            gestureCtx.lineWidth = 4;
+            gestureCtx.stroke();
+
+            gestureCtx.beginPath();
+            gestureCtx.arc(x, y, 20, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress));
+            gestureCtx.strokeStyle = '#00FFFF';
+            gestureCtx.lineWidth = 4;
+            gestureCtx.stroke();
+            
+            // Icon hint (Envelope-ish?)
+            gestureCtx.fillStyle = '#00FFFF';
+            gestureCtx.font = "16px Arial";
+            gestureCtx.textAlign = "center";
+            gestureCtx.fillText("✉", x, y - 25);
+            
+            gestureCtx.restore();
+        }
+
+        function drawHoverUI(x, y, progress) {
+            gestureCtx.save();
+            
+            // Center Dot
+            gestureCtx.beginPath();
+            gestureCtx.arc(x, y, 6, 0, Math.PI * 2);
+            gestureCtx.fillStyle = '#FFD700'; // Gold
+            gestureCtx.fill();
+            
+            // Outer Ring Background
+            gestureCtx.beginPath();
+            gestureCtx.arc(x, y, 20, 0, Math.PI * 2);
+            gestureCtx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+            gestureCtx.lineWidth = 4;
+            gestureCtx.stroke();
+
+            // Progress Arc
+            gestureCtx.beginPath();
+            gestureCtx.arc(x, y, 20, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress));
+            gestureCtx.strokeStyle = '#FFD700';
+            gestureCtx.lineWidth = 4;
+            gestureCtx.stroke();
+            
+            gestureCtx.restore();
+        }
+
+        function spawnFireworkAtScreenPos(nx, ny) {
+            // Screen (0..1) to NDC (-1..1)
+            // Note: nx is already 1-x from mediapipe (mirrored)
+            // But Three.js NDC x: -1 is left, 1 is right.
+            const ndcX = (nx * 2) - 1; 
+            const ndcY = -(ny * 2) + 1; // Top is 1
+
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+
+            // Intersect with a virtual plane at Z=0 (where cake/text is mostly)
+            const planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // Normal Z, Constant 0
+            const target = new THREE.Vector3();
+            raycaster.ray.intersectPlane(planeZ, target);
+            
+            if (target) {
+                createFirework(target);
+                
+                // Show label "祝你生日快乐啦"
+                // Screen coordinates can be derived from spawnFireworkAtScreenPos inputs (nx, ny)
+                // nx, ny are screen coordinates (0..1)
+                showFireworkLabel(nx * window.innerWidth, ny * window.innerHeight);
+            }
+        }
+
+        function showFireworkLabel(x, y) {
+            const label = document.createElement('div');
+            label.className = 'firework-label';
+            label.innerText = '祝你生日快乐啦';
+            label.style.left = x + 'px';
+            label.style.top = y + 'px';
+            document.body.appendChild(label);
+            
+            // Remove after animation (2000ms)
+            setTimeout(() => {
+                if (label.parentNode) label.parentNode.removeChild(label);
+            }, 2000);
+        }
+
+        function createFirework(pos) {
+            // Colors: White, Red, Yellow, Purple
+            const palette = [0xFFFFFF, 0xFF0000, 0xFFFF00, 0x800080];
+            
+            // Pick 2 random distinct colors
+            const idx1 = Math.floor(Math.random() * palette.length);
+            let idx2 = Math.floor(Math.random() * palette.length);
+            while(idx2 === idx1) idx2 = Math.floor(Math.random() * palette.length);
+            
+            const color1 = palette[idx1];
+            const color2 = palette[idx2];
+            
+            // Beams config (Increased count by 20%: 40 -> 48)
+            const beamCount = 48; 
+            // Particles per beam (Previously 10, no change needed here, we lengthen via speed diff)
+            const particlesPerBeam = 15;
+            
+            for(let i=0; i<beamCount; i++) {
+                // Random spherical direction for this beam
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+                
+                // Set beam color (alternate)
+                const beamColor = (i % 2 === 0) ? color1 : color2;
+                
+                // Base speed for this beam
+                const beamBaseSpeed = 15 + Math.random() * 10; 
+                
+                const velocityDir = new THREE.Vector3(
+                    Math.sin(phi) * Math.cos(theta),
+                    Math.cos(phi),
+                    Math.sin(phi) * Math.sin(theta)
+                ).normalize();
+
+                for(let k=0; k<particlesPerBeam; k++) {
+                    // To make trail longer by 70%, we need larger speed difference between head and tail
+                    // Old factor step: 0.05
+                    // New factor step: 0.05 * 1.7 = 0.085
+                    const speedFactor = 1.0 - (k * 0.085); 
+                    const speed = beamBaseSpeed * speedFactor;
+
+                    // Size increased 30%: 0.2 -> 0.26
+                    const size = 0.3;
+                    const geo = new THREE.SphereGeometry(size, 8, 8);
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: beamColor,
+                        emissive: beamColor,
+                        emissiveIntensity: 1.0, // Reduced glow intensity to reduce halo
+                        transparent: true,
+                        opacity: 1.0,
+                        roughness: 0.1,
+                        metalness: 0.1
+                    });
+                    
+                    const mesh = new THREE.Mesh(geo, mat);
+                    scene.add(mesh);
+                    
+                    const p = new Particle(mesh, pos, 'FIREWORK', {
+                        trailIndex: k,
+                        trailMax: particlesPerBeam
+                    });
+                    
+                    p.velocity.copy(velocityDir).multiplyScalar(speed);
+                    particleSystem.push(p);
+                }
+            }
+        }
+
+        function triggerGrandFinale() {
+            // Randomly spawn 8-11 fireworks over the screen
+            const count = 10 + Math.floor(Math.random() * 6);
+            
+            for(let i=0; i<count; i++) {
+                setTimeout(() => {
+                    // Random Position in view frustum (approx)
+                    const x = (Math.random() - 0.5) * 40; 
+                    const y = (Math.random() - 0.5) * 20 + 5; // Slightly above center
+                    const z = (Math.random() - 0.5) * 10;
+                    
+                    const pos = new THREE.Vector3(x, y, z);
+                    createFirework(pos);
+                    
+                    // Show label (need screen coords)
+                    // Project pos to screen
+                    const pCopy = pos.clone();
+                    pCopy.project(camera);
+                    const nx = (pCopy.x * .5 + .5) * window.innerWidth;
+                    const ny = (-(pCopy.y * .5) + .5) * window.innerHeight;
+                    showFireworkLabel(nx, ny);
+                    
+                }, i * 200); // Stagger by 200ms
+            }
+        }
+
+        function setupLights() {
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const p1 = new THREE.PointLight(0xffd700, 50, 100);
+            p1.position.set(20, 20, 20);
+            scene.add(p1);
+            const p2 = new THREE.PointLight(0xff69b4, 30, 100);
+            p2.position.set(-20, -10, 20);
+            scene.add(p2);
+        }
+
+        function createParticles() {
+            // Text scaled down by 30% (120 -> 84)
+            const happyPoints = getTextPoints('HAPPY', 90, CONFIG.particles.textSpacing);
+            const birthdayPoints = getTextPoints('BIRTHDAY', 90, CONFIG.particles.textSpacing);
+            
+            const createPart = (pos, type, color, group, size = 0.4, emissiveInf = 1, opacity = 1.0) => {
+                const geo = new THREE.SphereGeometry(size, 8, 8);
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: color, 
+                    emissive: color, 
+                    emissiveIntensity: emissiveInf, 
+                    metalness: 0.5, 
+                    roughness: 0.2,
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                group.add(mesh);
+                particleSystem.push(new Particle(mesh, pos, type));
+            };
+
+            // 1. Text (Scaled 0.2)
+            happyPoints.forEach(p => createPart(new THREE.Vector3(p.x, p.y + 8, 0), 'TEXT', CONFIG.colors.gold, happyGroup, 0.2));
+            birthdayPoints.forEach(p => createPart(new THREE.Vector3(p.x, p.y + 8, 0), 'TEXT', CONFIG.colors.gold, birthdayGroup, 0.2));
+            happyLocalHeight = 16; birthdayLocalHeight = 16;
+
+            // 2. 3D Cake Layers
+            let minX = Infinity, maxX = -Infinity;
+            happyPoints.forEach(p => { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); });
+            const cakeW = maxX - minX;
+            const radius = cakeW / 2;
+            cakeLocalWidth = cakeW;
+
+            // Bottom Tier (Wide base, #c93756, Size 0.15, Height 8)
+            const bottomH = 8.0;
+            for(let i=0; i<2000; i++) {
+                const r = Math.sqrt(Math.random()) * radius;
+                const theta = Math.random() * Math.PI * 2;
+                const c = 0xc93756;
+                // Opacity 0.5
+                createPart(new THREE.Vector3(Math.cos(theta)*r, Math.random()*bottomH, Math.sin(theta)*r), 'CAKE', c, cakeGroup, 0.15, 0.6, 0.5);
+            }
+            // Bottom Gold Pearl Ring (Size 0.6)
+            for(let th=0; th<Math.PI*2; th+=0.20) {
+                // Closer a bit -> radius * 0.95
+                createPart(new THREE.Vector3(Math.cos(th)*(radius*0.95), bottomH, Math.sin(th)*(radius*0.95)), 'PEARL', 0xffff00, cakeGroup, 0.6, 2.0);
+            }
+            
+            // Middle Tier (Pink Base #ef7a82, Size 0.15, Height 8)
+            const midRadius = radius * 0.69, midH = 8.0, midY = 8.0;
+            for(let i=0; i<1200; i++) {
+                const r = Math.sqrt(Math.random()) * midRadius;
+                const theta = Math.random() * Math.PI * 2;
+                createPart(new THREE.Vector3(Math.cos(theta)*r, midY + Math.random()*midH, Math.sin(theta)*r), 'CAKE', 0xef7a82, cakeGroup, 0.15, 0.8);
+            }
+            // Middle White Pearl Ring (Size 0.6)
+            for(let th=0; th<Math.PI*2; th+=0.25) {
+                // Closer a bit -> midRadius * 0.95
+                createPart(new THREE.Vector3(Math.cos(th)*(midRadius*0.95), midY + midH, Math.sin(th)*(midRadius*0.95)), 'PEARL', 0xffffff, cakeGroup, 0.6, 2.5);
+            }
+
+            // 3. Crown Spikes (Resting on middle tier, Height 8)
+            const topRadius = radius * 0.5;
+            const spikeBaseY = 16.0; // 8+8
+            const spikeCount = 8;
+            const spikeH = 8.0; 
+
+            for(let i=0; i<spikeCount; i++) {
+                const centerAng = (i / spikeCount) * Math.PI * 2;
+                const segmentArc = (Math.PI * 2) / spikeCount;
+                
+                const rows = 12;
+                for(let r=0; r<=rows; r++) {
+                    const progress = r / rows; 
+                    const currentY = spikeBaseY + progress * spikeH;
+                    const widthRatio = 1.0 - progress;
+                    // Factor 1.05 to ensure spikes connect/overlap at base
+                    const currentArcWidth = segmentArc * 1.05 * widthRatio;
+                    
+                    const count = Math.max(1, Math.ceil(widthRatio * 8));
+                    
+                    for(let k=0; k<count; k++) {
+                        let angleOffset = 0;
+                        if (count > 1) {
+                            angleOffset = ((k / (count - 1)) - 0.5) * currentArcWidth;
+                        }
+                        const finalAng = centerAng + angleOffset;
+                        const px = Math.cos(finalAng) * topRadius;
+                        const pz = Math.sin(finalAng) * topRadius;
+                        // Spikes size 0.2
+                        createPart(new THREE.Vector3(px, currentY, pz), 'CAKE', 0xffd700, cakeGroup, 0.2, 1.5);
+                    }
+                }
+
+                // Gem (Size 0.6)
+                const peakX = Math.cos(centerAng) * topRadius;
+                const peakY = spikeBaseY + spikeH + 1.5;
+                const peakZ = Math.sin(centerAng) * topRadius;
+                createPart(new THREE.Vector3(peakX, peakY, peakZ), 'GEM', 0xff0000, cakeGroup, 0.6, 3.0);
+            }
+            
+            cakeLocalHeight = 40; 
+            createCandle(spikeBaseY); 
+            cakeGroup.rotation.x = 0.174; // 10 degrees
+        }
+
+        function createCandle(y) {
+            const createPart = (pos, type, color, group, size = 0.2, emissiveInf = 1) => {
+                const geo = new THREE.SphereGeometry(size, 8, 8);
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: color, emissive: color, emissiveIntensity: emissiveInf, metalness: 0.5, roughness: 0.2
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                group.add(mesh);
+                particleSystem.push(new Particle(mesh, pos, type));
+            };
+
+            // White particle candle body (Thickened 20% -> Radius 0.6, Height increased to 11)
+            const bodyH = 11; 
+            const bodyR = 0.6;
+            for(let i=0; i<800; i++) { // Increased count slightly for taller body
+                const r = Math.random() * bodyR;
+                const theta = Math.random() * Math.PI * 2;
+                const py = y + Math.random() * bodyH;
+                const px = Math.cos(theta) * r;
+                const pz = Math.sin(theta) * r;
+                createPart(new THREE.Vector3(px, py, pz), 'CAKE', 0xffffff, cakeGroup, 0.15, 0.9);
+            }
+
+            // Flame (Particles, Teardrop shape)
+            const flameBaseY = y + bodyH;
+            const flameH = 4.5; 
+            for(let i=0; i<200; i++) {
+                const progress = Math.random(); 
+                const fy = flameBaseY + progress * flameH;
+                // Teardrop taper
+                const currentR = (1 - Math.pow(progress, 0.5)) * 0.6;
+                
+                const r = Math.sqrt(Math.random()) * currentR;
+                const ft = Math.random() * Math.PI * 2;
+                const px = Math.cos(ft) * r;
+                const pz = Math.sin(ft) * r;
+                
+                let color = 0xff6600;
+                if (progress < 0.25) color = 0xffffcc; // White/Yellow base
+                else if (progress < 0.6) color = 0xffaa00; // Orange mid
+                else color = 0xff0000; // Red tip
+
+                createPart(new THREE.Vector3(px, fy, pz), 'FLAME', color, cakeGroup, 0.2, 2.0);
+            }
+
+            // Warm light
+            const light = new THREE.PointLight(0xffaa00, 100, 50);
+            light.position.set(0, y + bodyH + 2, 0);
+            cakeGroup.add(light);
+            
+            function pulse() {
+                light.intensity = 80 + Math.random() * 40;
+                requestAnimationFrame(pulse);
+            }
+            pulse();
+        }
+
+        function gsap_animate_flame(flame, light) {
+            function loop() {
+                const s = 0.8 + Math.random() * 0.4;
+                flame.scale.set(0.8*s, 2.0*s, 0.8*s);
+                light.intensity = 80 + Math.random() * 40;
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        function setupPostProcessing() {
+            composer = new EffectComposer(renderer);
+            composer.addPass(new RenderPass(scene, camera));
+            const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloom.threshold = 0.15;
+            bloom.strength = isMobile ? 0.8 : 1.4;
+            bloom.radius = 0.4;
+            composer.addPass(bloom);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Resize UI Canvas
+            gestureCanvas.width = window.innerWidth;
+            gestureCanvas.height = window.innerHeight;
+            
+            const distance = CONFIG.camera.z;
+            const vFov = camera.fov * Math.PI / 180;
+            const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+            const visibleWidth = visibleHeight * camera.aspect;
+            
+            // 1. Text Scales (40% total height, split with 2% gap)
+            const gapH = visibleHeight * 0.01;
+            const textTotalTargetH = (visibleHeight * 0.4) - gapH;
+            
+            // Assume HAPPY and BIRTHDAY take equal half of that
+            const happyTargetH = textTotalTargetH / 2;
+            const bdayTargetH = textTotalTargetH / 2;
+            
+            const hScale = happyTargetH / happyLocalHeight;
+            const bScale = bdayTargetH / birthdayLocalHeight;
+            
+            happyGroup.scale.set(hScale, hScale, hScale);
+            birthdayGroup.scale.set(bScale, bScale, bScale);
+            
+            // 2. Cake Scale (40% height, 30% width)
+            const cakeTargetH = visibleHeight * 0.4;
+            const cakeTargetW = visibleWidth * 0.3;
+            const cakeScaleH = cakeTargetH / cakeLocalHeight;
+            const cakeScaleW = cakeTargetW / cakeLocalWidth;
+            cakeGroup.scale.set(cakeScaleW, cakeScaleH, cakeScaleW);
+            
+            // 3. Positioning
+            const topBoundary = visibleHeight / 2;
+            const topMargin = visibleHeight * 0.1;
+            
+            // Happy Top
+            const hLocalTop = 8;
+            happyGroup.position.y = (topBoundary - topMargin) - (hLocalTop * hScale);
+            
+            // Birthday Top = Happy Bottom - Gap
+            // Happy bottom is approx happyGroup.y - (8 * hScale)
+            const hBottom = happyGroup.position.y - (8 * hScale);
+            const bLocalTop = 8;
+            birthdayGroup.position.y = (hBottom - gapH) - (bLocalTop * bScale);
+            
+            // Cake Positioning (Bottom 40%)
+            const cakeLocalTop = 24; // Peak of crown/candle
+            cakeGroup.position.y = (topBoundary - visibleHeight * 0.5) - (cakeLocalTop * cakeScaleH);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+            const time = clock.elapsedTime;
+            
+            particleSystem.forEach(p => p.update(dt, time));
+            
+            // Update Rockets
+            for (let i = rockets.length - 1; i >= 0; i--) {
+                const r = rockets[i];
+                // Move up
+                r.mesh.position.addScaledVector(r.velocity, dt);
+                
+                // Trail effect (optional, maybe just simple for now)
+                
+                // Check if reached target
+                if (r.mesh.position.y >= r.targetY) {
+                    createFirework(r.mesh.position); // Explode
+                    
+                    // Remove rocket
+                    scene.remove(r.mesh);
+                    r.mesh.geometry.dispose();
+                    r.mesh.material.dispose();
+                    rockets.splice(i, 1);
+                }
+            }
+
+            composer.render();
+        }
+
+        function launchAutoFirework() {
+            // Calculate visual center of text
+            // Text particles are at local Y+8. Global Y = group.y + (8 * scale)
+            // But scale is applied to group. 
+            // Simplified: Happy group Y is roughly top text line. Birthday group is bottom line.
+            // We want the middle.
+            const hY = happyGroup.position.y;
+            const bY = birthdayGroup.position.y;
+            // Best guess for "middle of block": Average of group origins + roughly 8 offset
+            // Actually, let's just use the average of the two group positions plus a small offset for the text height
+            const targetY = (hY + bY) / 2 + 5; 
+
+            // Start from bottom (visible height is approx 47 at z=65)
+            // We spawn at -30 to be safe off-screen
+            const startY = -30;
+            
+            const geo = new THREE.SphereGeometry(0.2, 8, 8);
+            const mat = new THREE.MeshStandardMaterial({
+                color: 0xffffff, 
+                emissive: 0xffffff, 
+                emissiveIntensity: 2.0
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(0, startY, 0);
+            scene.add(mesh);
+            
+            rockets.push({
+                mesh: mesh,
+                targetY: 12, // User override: Force roughly center (computed targetY might be unreliable if not resized yet)
+                velocity: new THREE.Vector3(0, 35, 0) // Fast speed
+            });
+        }
+
+        // Music Control
+        const audio = document.getElementById('bg-music');
+        const btnMusic = document.getElementById('btn-music');
+        btnMusic.onclick = () => {
+            if (audio.paused) { 
+                audio.play(); 
+                btnMusic.style.color = '#fff';
+                btnMusic.style.background = 'rgba(212, 175, 55, 0.4)';
+            } else { 
+                audio.pause(); 
+                btnMusic.style.color = '#d4af37';
+                btnMusic.style.background = 'rgba(20, 20, 20, 0.6)';
+            }
+        };
+
+        // 自动播放处理
+        document.addEventListener('click', () => {
+            if (audio.paused) { audio.play(); btnMusic.style.color = '#fff'; btnMusic.style.background = 'rgba(212, 175, 55, 0.4)'; }
+        }, { once: true });
+
+        init();
+    </script>
+</body>
+</html>

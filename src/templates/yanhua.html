@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>新年烟花 - 手势放烟花</title>
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Ma+Shan+Zheng&family=Zhi+Mang+Xing&display=swap');
+
+        body { margin: 0; overflow: hidden; background-color: #050101; font-family: 'Cinzel', serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; z-index: 1; }
+        
+        /* UI Layer */
+        #ui-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; background: radial-gradient(circle at center, transparent 0%, rgba(20,0,0,0.3) 100%); }
+        
+        /* Loader */
+        #loader { position: absolute; width: 100%; height: 100%; background: #000; z-index: 100; display: flex; align-items: center; justify-content: center; transition: opacity 1.2s; pointer-events: none; }
+        .spinner { width: 40px; height: 40px; border: 2px solid rgba(204, 0, 0, 0.1); border-top: 2px solid #cc0000; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Controls */
+        /* 修改布局为两列 */
+        #top-right-controls { position: absolute; top: 20px; right: 20px; z-index: 30; display: flex; flex-direction: row; gap: 15px; pointer-events: auto; }
+        .control-col { display: flex; flex-direction: column; gap: 15px; }
+        
+        .control-btn { background: rgba(20, 0, 0, 0.6); border: 1px solid rgba(212, 175, 55, 0.4); color: #d4af37; width: 30px; padding: 5px 0; border-radius: 3px; font-family: 'Cinzel', serif; font-size: 7px; font-weight: 600; cursor: pointer; backdrop-filter: blur(5px); transition: all 0.3s ease; }
+        .control-btn:hover { background: rgba(204, 0, 0, 0.2); border-color: rgba(212, 175, 55, 0.8); color: #fff; transform: scale(1.05); }
+        .control-btn:active { transform: scale(0.95); }
+        
+        /* 隐藏的文件输入框 */
+        #file-input, #import-input { display: none; }
+
+        /* Webcam */
+        #webcam-wrapper { position: absolute; bottom: 20px; right: 20px; opacity: 0; pointer-events: none; border: 1px solid rgba(212, 175, 55, 0.5); border-radius: 4px; background: #000; z-index: 50; display: flex; transition: opacity 0.5s; }
+        #webcam { display: none; }
+        #webcam-preview { width: 100%; height: 100%; transform: scaleX(-1); }
+
+        /* Letter Modal */
+        #letter-editor-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%; max-width: 500px; background: rgba(10, 10, 10, 0.95); border: 1px solid #d4af37; border-radius: 10px; padding: 20px; z-index: 200; display: none; flex-direction: column; gap: 15px; pointer-events: auto; }
+        #letter-editor-modal h3 { color: #d4af37; margin: 0; text-align: center; }
+        #letter-text-input { width: 100%; height: 150px; background: rgba(255,255,255,0.05); border: 1px solid #444; color: #fff; padding: 10px; resize: none; outline: none; }
+        .modal-btn-group { display: flex; justify-content: flex-end; gap: 10px; }
+
+        /* Letter Display */
+        #letter-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 150; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; pointer-events: auto; opacity: 0; transition: opacity 1.5s ease; }
+        .letter-paper { height: 80%; aspect-ratio: 3/4; background: rgba(255, 252, 240, 0.15); backdrop-filter: blur(3px); border: 1px solid rgba(255, 255, 255, 0.3); padding: 6vh; box-sizing: border-box; position: relative; display: flex; flex-direction: column; transform: translateY(20px); transition: transform 1.5s ease-out; }
+        .letter-content { font-family: 'Ma Shan Zheng', cursive; font-size: clamp(16px, 2.5vh, 24px); line-height: 1.8; color: rgba(255, 255, 255, 0.9); text-shadow: 0 0 5px rgba(255,215,0, 0.3); white-space: pre-wrap; overflow-y: auto; flex: 1; scroll-behavior: smooth; }
+        
+        .letter-content::-webkit-scrollbar { width: 6px; }
+        .letter-content::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 3px; }
+        .cursor::after { content: '|'; animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .letter-close-btn { position: absolute; top: 15px; right: 15px; width: 30px; height: 30px; border: 1px solid rgba(255,255,255,0.4); border-radius: 50%; color: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; }
+        .letter-close-btn:hover { background: rgba(255,255,255,0.2); color: #fff; border-color: #fff; }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm"
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div id="loader"><div class="spinner"></div></div>
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div id="top-right-controls">
+            <div class="control-col" id="col-system">
+                <button id="btn-music" class="control-btn">音乐: 关</button>
+                <button id="btn-edit-letter" class="control-btn">写下祝福</button>
+            </div>
+        </div>
+        
+        <!-- 手势提示 -->
+        <div id="gesture-hint" style="position: absolute; top: 20px; left: 20px; z-index: 30; background: rgba(20, 0, 0, 0.6); border: 1px solid rgba(212, 175, 55, 0.4); color: #d4af37; padding: 10px 15px; border-radius: 5px; font-size: 12px; pointer-events: none; backdrop-filter: blur(5px);">
+            <div>👆 单指指尖 → 引导烟花</div>
+            <div>✌️ 胜利手势 → 切换主题</div>
+            <div>✋ 张开手掌 → 五福临门</div>
+            <div>👌 OK手势 → 打开家书</div>
+        </div>
+    </div>
+
+    <div id="letter-editor-modal">
+        <h3>撰写你的心意</h3>
+        <textarea id="letter-text-input" placeholder="在这里写下你想说的话..."></textarea>
+        <div class="modal-btn-group">
+            <button id="btn-cancel-letter" class="control-btn" style="width: 80px;">取消</button>
+            <button id="btn-save-letter" class="control-btn" style="width: 80px;">保存</button>
+        </div>
+    </div>
+
+    <div id="letter-overlay">
+        <div class="letter-paper">
+            <div class="letter-close-btn" id="btn-close-letter-mode">×</div>
+            <div class="letter-content" id="letter-content-display"></div>
+        </div>
+    </div>
+
+    <div id="webcam-wrapper">
+        <video id="webcam" autoplay playsinline webkit-playsinline></video>
+        <canvas id="webcam-preview"></canvas>
+    </div>
+    
+    <audio id="bg-music" loop preload="auto">
+        <source src="/generated/bg.mp3" type="audio/mpeg">
+    </audio>
+    <script>
+        (function() {
+            const audio = document.getElementById('bg-music');
+            const btn = document.getElementById('btn-music');
+            
+            const updateState = () => {
+                if (audio.paused) {
+                    btn.textContent = '音乐: 关';
+                    btn.style.background = '';
+                    btn.style.color = '';
+                } else {
+                    btn.textContent = '音乐: 开';
+                    btn.style.background = 'rgba(212, 175, 55, 0.2)';
+                    btn.style.color = '#fff';
+                }
+            };
+
+            const removeGlobalListeners = () => {
+                ['click', 'touchstart', 'keydown'].forEach(e => document.removeEventListener(e, tryAutoPlay));
+            };
+
+            const toggleMusic = (e) => {
+                // 阻止事件冒泡，防止触发全局的 tryAutoPlay
+                e.stopPropagation();
+                
+                // 如果是 touchstart，阻止默认行为（防止后续产生 click 事件导致触发两次）
+                if (e.type === 'touchstart') {
+                    e.preventDefault();
+                }
+
+                if (audio.paused) {
+                    audio.play().then(() => {
+                        updateState();
+                        removeGlobalListeners();
+                    }).catch(console.error);
+                } else {
+                    audio.pause();
+                    updateState();
+                }
+            };
+
+            const tryAutoPlay = (e) => {
+                // 双重保险：如果事件源是按钮或其子元素，忽略之（虽然 stopPropagation 应该已经拦截了）
+                if (e && e.target && (e.target === btn || btn.contains(e.target))) return;
+
+                audio.play().then(() => {
+                    updateState();
+                    // 播放成功，移除全局交互监听
+                    removeGlobalListeners();
+                }).catch((err) => {
+                    // 忽略自动播放失败，等待用户交互
+                    if (err.name !== 'NotAllowedError') console.error('Audio playback error:', err);
+                });
+            };
+
+            // 按钮绑定 touchstart (移动端优先响应) 和 click (桌面端)
+            btn.addEventListener('touchstart', toggleMusic, { passive: false });
+            btn.addEventListener('click', toggleMusic);
+
+            // 1. 尝试自动播放
+            tryAutoPlay();
+
+            // 微信环境强制播放修复
+            const fixWechatAudio = () => {
+                if (typeof WeixinJSBridge === "object") {
+                    WeixinJSBridge.invoke('getNetworkType', {}, () => {
+                        audio.play().then(updateState).catch(() => {});
+                    });
+                }
+            };
+
+            if (typeof WeixinJSBridge === "undefined") {
+                document.addEventListener("WeixinJSBridgeReady", fixWechatAudio, false);
+            } else {
+                fixWechatAudio();
+            }
+
+            // 2. 绑定全局交互事件（点击任意空白处播放）
+            ['click', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, tryAutoPlay));
+        })();
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'; 
+        import { FilesetResolver, HandLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
+
+        // 1. 全局配置
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const CONFIG = {
+            colors: {
+                bg: 0x000510, gold: 0xffd700, 
+                firework1: 0xff0000, firework2: 0x00ff00, firework3: 0x0088ff,
+                firework4: 0xff00ff, firework5: 0xffff00, firework6: 0xff8800
+            },
+            particles: { 
+                snowCount: isMobile ? 500 : 1000, 
+                snowSpeed: 5 
+            },
+            fireworks: {
+                particlesPerFirework: isMobile ? 80 : 150,
+                launchSpeed: 24, // 提高发射速度，确保能飞到更高位置
+                gravity: -9.8,
+                drag: 0.96,
+                explosionRadius: 25,
+                maxFireworks: 15, // 增加最大烟花数，防止五福齐发时把其他顶掉
+                cooldown: 200  // ms between fireworks
+            },
+            camera: { z: 55 }
+        };
+
+        // 2. 状态管理
+        const STATE = {
+            currentThemeIndex: 0, // 0:Festive, 1:Snow
+            gestureDebounceTimer: 0,
+            hand: { detected: false },
+            fireworks: [],
+            lastFireworkTime: 0,
+            fingerTipPos: new THREE.Vector3(),
+            letterContent: "新春快乐\n万事如意\n\n愿烟花带给您\n最美好的祝福", 
+            letterTyper: null
+        };
+
+        let scene, camera, renderer, composer, clock = new THREE.Clock();
+        let bgGroup; 
+        let galaxySystem = null; 
+        let snowSystem = null;
+        let fireworksGroup = null;
+
+        let handLandmarker, video, drawingUtils, canvasCtx;
+        let snowTexture, fireworkTexture, matLib = {};
+        let fireworkColors = [];
+        let fuShapePoints = []; // Store "Fu" points
+        
+        async function init() {
+            initThree();            
+            setupEnvironment();     
+            setupLights();          
+            createTextures();       
+            createMaterials();
+
+            // 确保字体加载后再生成形状，或者简单延时
+            // 为了保险，先用默认字体生成一次，防止 shapePoints 为空
+            generateFuShape(); 
+            // 尝试加载中文字体后重新生成
+            document.fonts.load('80px "Ma Shan Zheng"').then(() => {
+                console.log('Font loaded, regenerating shape');
+                generateFuShape();
+            });
+            
+            createGalaxyBackground(); 
+            createSnowBackground();     
+            
+            setupPostProcessing();
+            setupEvents();          
+            setupLetterSystem();
+            
+            // 移除这里的 initMediaPipe 调用，改到 loader 消 disappearance后
+
+            const loader = document.getElementById('loader');
+            loader.style.opacity = 0;
+            setTimeout(() => {
+                loader.remove();
+                // 延迟加载重型模型，提升首屏速度
+                setTimeout(() => initMediaPipe().catch(console.warn), 500);
+            }, 1200);
+
+            animate(); 
+        }
+
+        function initThree() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(CONFIG.colors.bg);
+            scene.fog = new THREE.FogExp2(CONFIG.colors.bg, 0.012); 
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(0, 0, CONFIG.camera.z); 
+
+            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance", depth: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping; 
+            renderer.toneMappingExposure = 1.0; 
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            bgGroup = new THREE.Group(); scene.add(bgGroup);
+            fireworksGroup = new THREE.Group(); scene.add(fireworksGroup);
+        }
+
+        function setupEnvironment() {
+            const pmrem = new THREE.PMREMGenerator(renderer);
+            pmrem.compileEquirectangularShader();
+            scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        }
+
+        function setupLights() {
+            scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+            const pointLight = new THREE.PointLight(CONFIG.colors.gold, 1, 100);
+            pointLight.position.set(0, -10, 10);
+            scene.add(pointLight);
+        }
+
+        function setupPostProcessing() {
+            const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloom.threshold = 0.75; 
+            bloom.strength = isMobile ? 0.35 : 0.5; 
+            bloom.radius = isMobile ? 0.3 : 0.5;
+            composer = new EffectComposer(renderer);
+            composer.addPass(new RenderPass(scene, camera));
+            composer.addPass(bloom);
+        }
+
+        function createTextures() {
+            const snowCvs = document.createElement('canvas'); snowCvs.width = 32; snowCvs.height = 32;
+            const sCtx = snowCvs.getContext('2d');
+            const grad = sCtx.createRadialGradient(16,16,0, 16,16,16);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            sCtx.fillStyle = grad; sCtx.fillRect(0,0,32,32);
+            snowTexture = new THREE.CanvasTexture(snowCvs);
+
+            // Firework Glow
+            const fwCvs = document.createElement('canvas'); fwCvs.width = 64; fwCvs.height = 64;
+            const fCtx = fwCvs.getContext('2d');
+            const fGrad = fCtx.createRadialGradient(32,32,0, 32,32,32);
+            fGrad.addColorStop(0, 'rgba(255,255,255,1)');
+            fGrad.addColorStop(0.3, 'rgba(255,255,255,0.8)');
+            fGrad.addColorStop(0.5, 'rgba(255,255,255,0.4)');
+            fGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            fCtx.fillStyle = fGrad; fCtx.fillRect(0,0,64,64);
+            fireworkTexture = new THREE.CanvasTexture(fwCvs);
+        }
+
+        function createMaterials() {
+            matLib.snowFlake = new THREE.PointsMaterial({ color: 0xffccaa, size: 0.5, map: snowTexture, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
+            
+            // 烟花颜色
+            fireworkColors = [
+                CONFIG.colors.firework1, CONFIG.colors.firework2, CONFIG.colors.firework3,
+                CONFIG.colors.firework4, CONFIG.colors.firework5, CONFIG.colors.firework6
+            ];
+        }
+
+        function generateFuShape() {
+            const size = 256; // 增加分辨率
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // 字体回退机制
+            const fontStack = '"Ma Shan Zheng", "STKaiti", "KaiTi", "Arial", sans-serif';
+            ctx.font = `bold 200px ${fontStack}`;
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('福', size/2, size/2);
+            
+            const data = ctx.getImageData(0, 0, size, size).data;
+            fuShapePoints = [];
+            
+            const step = 4; // 采样步长
+            for(let y=0; y<size; y+=step) { 
+                for(let x=0; x<size; x+=step) {
+                    // Alpha 阈值
+                    if(data[(y*size + x)*4 + 3] > 100) {
+                        fuShapePoints.push(new THREE.Vector3(
+                            (x / size) * 2 - 1,
+                            -( (y / size) * 2 - 1 ), 
+                            0
+                        ));
+                    }
+                }
+            }
+            console.log(`Generated "Fu" shape with ${fuShapePoints.length} points.`);
+            
+            // 兜底策略：如果点太少（字体加载失败），用一个方块代替，或者再试一次
+            if (fuShapePoints.length < 50) {
+                console.warn("Generating Fu shape failed (too few points), executing fallback.");
+                // 绘制一个简单的笑脸或圆圈作为 fallback
+                const r = 0.8;
+                for(let i=0; i<300; i++) {
+                     const theta = Math.random() * Math.PI * 2;
+                     fuShapePoints.push(new THREE.Vector3(r*Math.cos(theta), r*Math.sin(theta), 0));
+                }
+            }
+        }
+
+        function createGalaxyBackground() {
+            const geometry = new THREE.BufferGeometry(), count = 3000;
+            const pos = new Float32Array(count * 3), sizes = new Float32Array(count), colors = new Float32Array(count * 3);
+            const c1 = new THREE.Color(0xffaa00), c2 = new THREE.Color(0xcc0000), c3 = new THREE.Color(0xffd700);
+            for(let i=0; i<count; i++) {
+                const r = 60 + Math.random()*250, theta = Math.random()*Math.PI*2, phi = Math.acos(2*Math.random()-1);
+                pos[i*3] = r*Math.sin(phi)*Math.cos(theta); pos[i*3+1] = r*Math.sin(phi)*Math.sin(theta); pos[i*3+2] = r*Math.cos(phi);
+                sizes[i] = Math.random()*2.0;
+                let c = Math.random(), finalC = c<0.6?c1:(c<0.9?c2:c3);
+                colors[i*3]=finalC.r; colors[i*3+1]=finalC.g; colors[i*3+2]=finalC.b;
+            }
+            geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            galaxySystem = new THREE.Points(geometry, new THREE.PointsMaterial({ size: 1.0, transparent: true, opacity: 0.8, vertexColors: true, sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+            bgGroup.add(galaxySystem);
+        }
+
+        function createSnowBackground() {
+            const geometry = new THREE.BufferGeometry();
+            const count = CONFIG.particles.snowCount;
+            const pos = new Float32Array(count * 3);
+            const velocities = new Float32Array(count); 
+
+            for(let i=0; i<count; i++) {
+                pos[i*3] = (Math.random() - 0.5) * 100; // X
+                pos[i*3+1] = (Math.random() - 0.5) * 100; // Y
+                pos[i*3+2] = (Math.random() - 0.5) * 60; // Z
+                velocities[i] = 1.0 + Math.random(); 
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 1));
+
+            snowSystem = new THREE.Points(geometry, matLib.snowFlake);
+            snowSystem.visible = true; 
+            bgGroup.add(snowSystem);
+        }
+
+        // 烟花粒子类
+        class FireworkParticle {
+            constructor(position, velocity, color, size = 0.2) {
+                this.velocity = velocity.clone();
+                this.color = color;
+                this.alive = true;
+                this.life = 1.0;
+                this.fadeSpeed = 0.5 + Math.random() * 0.5;
+                this.drag = CONFIG.fireworks.drag; // 默认使用配置的阻力
+                this.gravity = CONFIG.fireworks.gravity; // 实例级重力，可覆盖
+                
+                const geometry = new THREE.SphereGeometry(size, 4, 4);
+                const material = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 1.0,
+                    blending: THREE.AdditiveBlending
+                });
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.position.copy(position);
+            }
+            
+            update(dt) {
+                if (!this.alive) return;
+                
+                // 重力和阻力
+                this.velocity.y += this.gravity * dt;
+                this.velocity.multiplyScalar(this.drag);
+                
+                // 更新位置
+                this.mesh.position.add(this.velocity.clone().multiplyScalar(dt));
+                
+                // 淡出
+                this.life -= this.fadeSpeed * dt;
+                if (this.life <= 0) {
+                    this.alive = false;
+                    this.mesh.material.opacity = 0;
+                } else {
+                    this.mesh.material.opacity = this.life;
+                    this.mesh.scale.setScalar(0.5 + this.life * 0.5);
+                }
+            }
+        }
+        
+        // 烟花系统
+        class Firework {
+            constructor(startPos, targetPos, color, shapePoints = null) {
+                this.startPos = startPos.clone();
+                this.targetPos = targetPos.clone();
+                this.color = color;
+                this.shapePoints = shapePoints; // 保存形状点
+                this.particles = [];
+                this.exploded = false;
+                this.alive = true;
+                
+                // 发射粒子
+                const direction = targetPos.clone().sub(startPos).normalize();
+                const distance = startPos.distanceTo(targetPos);
+                const launchVelocity = direction.multiplyScalar(CONFIG.fireworks.launchSpeed);
+                
+                this.launchParticle = new FireworkParticle(
+                    startPos,
+                    launchVelocity,
+                    color,
+                    0.3
+                );
+                this.launchParticle.fadeSpeed = 0.1; // 发射阶段不淡出
+                this.launchParticle.drag = 1.0; // 发射粒子不受空气阻力影响，确保能到达高度
+                this.particles.push(this.launchParticle);
+                fireworksGroup.add(this.launchParticle.mesh);
+                
+                this.timeToExplosion = distance / CONFIG.fireworks.launchSpeed;
+                this.timer = 0;
+            }
+            
+            explode() {
+                if (this.exploded) return;
+                this.exploded = true;
+                
+                const explosionPos = this.launchParticle.mesh.position.clone();
+
+                if (this.shapePoints && this.shapePoints.length > 0) {
+                    this.explodeShape(explosionPos);
+                } else {
+                    this.explodeNormal(explosionPos);
+                }
+
+                // 移除发射粒子
+                fireworksGroup.remove(this.launchParticle.mesh);
+                this.launchParticle.mesh.geometry.dispose();
+                this.launchParticle.mesh.material.dispose();
+                this.launchParticle.alive = false;
+
+                // 播放声音
+                if (!CONFIG.audio.muted) {
+                    createSound(explosionPos);
+                }
+            }
+
+            explodeShape(pos) {
+                // 使用福字形状点
+                const totalPoints = this.shapePoints.length;
+                const targetCount = 600; // 减少粒子数量 (600)
+                const step = Math.max(1, Math.floor(totalPoints / targetCount));
+                
+                const scale = 9.6; // 小20% (12.0 * 0.8 = 9.6)
+
+                // 强制颜色为红色
+                const fuColor = new THREE.Color(0xFF0000);
+
+                for(let i=0; i<totalPoints; i+=step) {
+                    const pDef = this.shapePoints[i];
+                    // 目标相对偏移
+                    const targetOffset = new THREE.Vector3(pDef.x * scale, pDef.y * scale, 0); 
+                    
+                    // 粒子直接生成在形状位置上（瞬间绽放效果）
+                    const particlePos = pos.clone().add(targetOffset);
+
+                    // 给予微小的向外膨胀速度
+                    const velocity = targetOffset.clone().normalize().multiplyScalar(0.2 + Math.random() * 0.3);
+                    
+                    // 颜色微调 (在红色基础上微调)
+                    const pColor = fuColor.clone().offsetHSL(0.0, 0, (Math.random()-0.5)*0.1);
+
+                    const particle = new FireworkParticle(
+                        particlePos,
+                        velocity,
+                        pColor.getStyle(), 
+                        0.3 + Math.random() * 0.2
+                    );
+                    
+                    // 取消光晕 (使用 NormalBlending + 降低透明度)
+                    particle.mesh.material.blending = THREE.NormalBlending;
+                    particle.mesh.material.transparent = true;
+                    particle.mesh.material.opacity = 0.8;
+
+                    particle.drag = 0.92; // 较大阻力，字形保持久一点
+                    particle.gravity = -3.5; // 自然下坠
+                    
+                    // 增加淡出速度，确保粒子会消失
+                    // 之前是 0.005 + ... (约 200 秒)
+                    // 现在改为 0.15 + ... (约 5-7 秒)
+                    particle.fadeSpeed = 0.45 + Math.random() * 0.1; 
+                    
+                    this.particles.push(particle);
+                    fireworksGroup.add(particle.mesh);
+                }
+            }
+
+            explodeNormal(pos) {
+                // 创建爆炸粒子
+                const count = CONFIG.fireworks.particlesPerFirework;
+                for (let i = 0; i < count; i++) {
+                    // 球形分布
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    // 增大爆炸半径
+                    const baseSpeed = CONFIG.fireworks.explosionRadius;
+                    const speed = baseSpeed * 0.5 + Math.random() * baseSpeed * 0.8;
+                    
+                    const velocity = new THREE.Vector3(
+                        speed * Math.sin(phi) * Math.cos(theta),
+                        speed * Math.sin(phi) * Math.sin(theta),
+                        speed * Math.cos(phi)
+                    );
+                    
+                    // 随机微调颜色
+                    const pColor = new THREE.Color(this.color);
+                    pColor.offsetHSL(0, 0, (Math.random() - 0.5) * 0.2);
+                    
+                    const particle = new FireworkParticle(
+                        pos.clone(), // 确保使用克隆的位置
+                        velocity,
+                        pColor.getStyle(),
+                        0.2 + Math.random() * 0.4
+                    );
+                    this.particles.push(particle);
+                    fireworksGroup.add(particle.mesh);
+                }
+            }
+            
+            update(dt) {
+                if (!this.alive) return;
+                
+                this.timer += dt;
+                
+                // 检查是否应该爆炸
+                if (!this.exploded && this.timer >= this.timeToExplosion) {
+                    this.explode();
+                }
+                
+                // 更新所有粒子
+                let allDead = true;
+                this.particles.forEach(p => {
+                    p.update(dt);
+                    if (p.alive) allDead = false;
+                    else if (p.mesh.parent) {
+                        fireworksGroup.remove(p.mesh);
+                        p.mesh.geometry.dispose();
+                        p.mesh.material.dispose();
+                    }
+                });
+                
+                if (allDead) {
+                    this.alive = false;
+                }
+            }
+        }
+        
+        // 创建烟花
+        function launchFirework(targetPos, shapePoints = null, force = false) {
+            if (STATE.fireworks.length >= CONFIG.fireworks.maxFireworks) {
+                // 移除最早的烟花
+                const oldFirework = STATE.fireworks.shift();
+                oldFirework.alive = false;
+            }
+            
+            const now = Date.now();
+            if (!force && now - STATE.lastFireworkTime < CONFIG.fireworks.cooldown) {
+                return; // 冷却中
+            }
+            STATE.lastFireworkTime = now;
+            
+            // 随机起始位置（屏幕底部）
+            const startPos = new THREE.Vector3(
+                (Math.random() - 0.5) * 20,
+                -20,
+                (Math.random() - 0.5) * 10
+            );
+            
+            // 随机颜色
+            const color = fireworkColors[Math.floor(Math.random() * fireworkColors.length)];
+            
+            const firework = new Firework(startPos, targetPos, color, shapePoints);
+            STATE.fireworks.push(firework);
+        }
+
+        function switchTheme(themeIndex) {
+            STATE.currentThemeIndex = themeIndex;
+            renderer.toneMappingExposure = (themeIndex === 1) ? 0.7 : 1.0;
+            const isFestive = (themeIndex === 0);
+
+            if (galaxySystem) galaxySystem.visible = isFestive;
+            if (snowSystem) snowSystem.visible = true;
+        }
+
+        function setupLetterSystem() {
+            // Check URL for letter content
+            const params = new URLSearchParams(window.location.search);
+            const letterParam = params.get('letter');
+            if (letterParam) {
+                try {
+                    STATE.letterContent = decodeURIComponent(escape(atob(letterParam)));
+                } catch (e) { console.error('Failed to parse letter from URL', e); }
+            }
+
+            document.getElementById('btn-edit-letter').addEventListener('click', (e) => {
+                e.stopPropagation();
+                openLetterEditor();
+            });
+
+            document.getElementById('btn-cancel-letter').addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('letter-editor-modal').style.display = 'none';
+            });
+
+            document.getElementById('btn-save-letter').addEventListener('click', (e) => {
+                e.stopPropagation();
+                const text = document.getElementById('letter-text-input').value;
+                if (text.trim()) {
+                    STATE.letterContent = text;
+                    document.getElementById('letter-editor-modal').style.display = 'none';
+                    enterLetterMode(); // Show it immediately
+                    
+                    // Update URL (optional, for sharing)
+                    try {
+                        const b64 = btoa(unescape(encodeURIComponent(text)));
+                        const url = new URL(window.location);
+                        url.searchParams.set('letter', b64);
+                        window.history.pushState({}, '', url);
+                    } catch(e) {}
+                }
+            });
+
+            document.getElementById('btn-close-letter-mode').addEventListener('click', (e) => {
+                e.stopPropagation();
+                exitLetterMode();
+            });
+        }
+
+        function openLetterEditor() {
+            const modal = document.getElementById('letter-editor-modal');
+            const textarea = document.getElementById('letter-text-input');
+            textarea.value = STATE.letterContent || "";
+            modal.style.display = 'flex';
+        }
+
+        function enterLetterMode() {
+            const overlay = document.getElementById('letter-overlay');
+            const contentDiv = document.getElementById('letter-content-display');
+            overlay.style.display = 'flex';
+            // Force reflow
+            overlay.offsetHeight; 
+            overlay.style.opacity = 1;
+            
+            // Typewriter effect
+            contentDiv.innerHTML = '';
+            contentDiv.classList.add('cursor');
+            if (STATE.letterTyper) clearInterval(STATE.letterTyper);
+            
+            let i = 0;
+            // 替换换行符为实际换行
+            const text = (STATE.letterContent || "新春快乐").replace(/\\n/g, '\n');
+            
+            STATE.letterTyper = setInterval(() => {
+                const char = text.charAt(i);
+                contentDiv.textContent += char; 
+                i++;
+                if (i >= text.length) {
+                    clearInterval(STATE.letterTyper);
+                    contentDiv.classList.remove('cursor');
+                }
+                // Auto scroll to bottom
+                contentDiv.scrollTop = contentDiv.scrollHeight;
+            }, 100);
+        }
+
+        function exitLetterMode() {
+            const overlay = document.getElementById('letter-overlay');
+            overlay.style.opacity = 0;
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                if (STATE.letterTyper) clearInterval(STATE.letterTyper);
+            }, 500); // Wait for transition
+        }
+
+        async function initMediaPipe() {
+            const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+            handLandmarker = await HandLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" }, runningMode: "VIDEO", numHands: 1 });
+            video = document.getElementById('webcam'); canvasCtx = document.getElementById('webcam-preview').getContext('2d'); drawingUtils = new DrawingUtils(canvasCtx);
+            
+            if (navigator.mediaDevices?.getUserMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: {ideal: 640}, height: {ideal: 480} } });
+                    video.srcObject = stream;
+
+                    // 立即尝试播放，这对于某些移动浏览器是必要的
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
+                            console.warn("视频自动播放初始尝试失败（在移动端是正常现象）:", error);
+                            // 即使失败，我们仍然依赖 loadeddata 事件
+                        });
+                    }
+
+                    video.addEventListener("loadeddata", () => { 
+                        // 元数据加载后再次尝试播放，此时成功率更高
+                        video.play().then(() => {
+                            document.getElementById('webcam-wrapper').style.opacity = 1;
+                            const aspect = video.videoWidth / video.videoHeight;
+                            const targetWidth = 60;
+                            const wrapper = document.getElementById('webcam-wrapper');
+                            wrapper.style.width = targetWidth + 'px';
+                            wrapper.style.height = (targetWidth / aspect) + 'px';
+                            
+                            const previewCanvas = document.getElementById('webcam-preview');
+                            previewCanvas.width = video.videoWidth;
+                            previewCanvas.height = video.videoHeight;
+                            
+                            predictWebcam(); 
+                        }).catch(error => {
+                            console.error("在 'loadeddata' 事件后播放视频失败:", error);
+                            alert("无法自动播放摄像头视频。请尝试点击屏幕或刷新页面。");
+                        });
+                    });
+                } catch (err) {
+                    console.error("获取摄像头媒体流失败:", err);
+                    alert(`无法访问摄像头。请确保您已授予摄像头权限。\n错误: ${err.name}`);
+                }
+            } else {
+                console.warn("浏览器不支持 getUserMedia");
+                alert("您的浏览器不支持摄像头功能。");
+            }
+        }
+
+        let lastVideoTime = -1;
+        async function predictWebcam() {
+            if (lastVideoTime !== video.currentTime && handLandmarker) {
+                lastVideoTime = video.currentTime;
+                const result = handLandmarker.detectForVideo(video, performance.now());
+                canvasCtx.clearRect(0, 0, canvasCtx.canvas.width, canvasCtx.canvas.height);
+                canvasCtx.drawImage(video, 0, 0, canvasCtx.canvas.width, canvasCtx.canvas.height);
+                if (result.landmarks?.[0]) {
+                    drawingUtils.drawConnectors(result.landmarks[0], HandLandmarker.HAND_CONNECTIONS, { color: "#d4af37", lineWidth: 3 });
+                    drawingUtils.drawLandmarks(result.landmarks[0], { color: "#ffffff", lineWidth: 1, radius: 3 });
+                    processGestures(result.landmarks[0]);
+                } else STATE.hand.detected = false;
+            }
+            requestAnimationFrame(predictWebcam);
+        }
+
+        function processGestures(lm) {
+            STATE.hand.detected = true;
+            const dist = (i, j) => Math.hypot(lm[i].x - lm[j].x, lm[i].y - lm[j].y);
+            const dIndex = dist(8,0), dMiddle = dist(12,0), dRing = dist(16,0), dPinky = dist(20,0);
+            const palmSize = dist(0, 9); 
+
+            // Update target
+            const fingerTip2D = lm[8]; // Landmarks are normalized [0, 1]
+            // 修复：UI进行了水平镜像翻转 (scaleX(-1))，所以逻辑坐标也需要对 X 轴取反
+            const ndcX = -(fingerTip2D.x * 2 - 1); 
+            const ndcY = -(fingerTip2D.y * 2 - 1);
+            
+            const vector = new THREE.Vector3(ndcX, ndcY, 0.5);
+            vector.unproject(camera);
+            
+            const dir = vector.sub(camera.position).normalize();
+            const distance = 48; // 降低距离 (60 -> 48)
+            STATE.fingerTipPos.copy(camera.position).add(dir.multiplyScalar(distance));
+            
+            // 向上偏移 (确保在屏幕上方绽放) + 重力补偿
+            // 调高绽放高度 (35 * 1.3 ≈ 46)
+            STATE.fingerTipPos.y += 46;
+
+            // Victory (Theme)
+            const isVHigh = dIndex > palmSize * 1.3 && dMiddle > palmSize * 1.3; 
+            const isOthersLow = dRing < dIndex * 0.5 && dPinky < dMiddle * 0.5; 
+            const isSpread = dist(8, 12) > dist(5, 9) * 1.2; 
+            if (isVHigh && isOthersLow && isSpread) {
+                if (Date.now() - STATE.gestureDebounceTimer > 2000) { 
+                    switchTheme((STATE.currentThemeIndex + 1) % 2); 
+                    STATE.gestureDebounceTimer = Date.now(); 
+                }
+            }
+
+            // Five Fingers Open (Fu Character)
+            // Determine if palm is open: all fingers extended relative to palm size
+            // 调大参数：要求手指伸得更直 (0.8 -> 1.1)
+            const isPalmOpen = dIndex > palmSize * 1.1 && dMiddle > palmSize * 1.1 && dRing > palmSize * 1.1 && dPinky > palmSize * 1.1;
+            
+            // OK Gesture (Open Letter)
+            // Thumb and Index form a circle (close to each other), others are extended
+            const isOK = dist(4, 8) < palmSize * 0.5 && dMiddle > palmSize && dRing > palmSize;
+            const isLetterOpen = document.getElementById('letter-overlay').style.display === 'flex';
+
+            if (isOK && !isLetterOpen) {
+                 if (Date.now() - STATE.gestureDebounceTimer > 2000) {
+                     enterLetterMode();
+                     STATE.gestureDebounceTimer = Date.now();
+                 }
+            } else if (isPalmOpen) {
+                if (Date.now() - STATE.gestureDebounceTimer > 3000) { // Slower cooldown for big event
+                    // Launch 5 fireworks that form "Fu"
+                    // We launch 5 rockets in a spread
+                    const center = STATE.fingerTipPos.clone();
+                    for(let i=-2; i<=2; i++) {
+                         const offset = new THREE.Vector3(i * 12, -3 + Math.abs(i)*3, 0); // Arch formation
+                         const target = center.clone().add(offset);
+                         
+                         // Only the center one forms the character (as the "Core")
+                         // Or we can launch just one big one. The prompt asks for "Launch 5 fireworks".
+                         // Let's launch 5, but the center one carries the payload.
+                         // The others are just flanking decorative shots.
+                         if (i === 0) {
+                             launchFirework(target, fuShapePoints, true);
+                         } else {
+                             launchFirework(target, null, true);
+                         }
+                    }
+                    STATE.gestureDebounceTimer = Date.now();
+                }
+            } else {
+                // Only allow normal point firework if not doing special gesture
+                // Point (Firework)
+                const isPointing = dIndex > 0.15 && dMiddle < dIndex*0.6 && dRing < dIndex*0.6 && dPinky < dIndex*0.6;
+                if (isPointing) { 
+                    if (!STATE.wasPointing) launchFirework(STATE.fingerTipPos);
+                    STATE.wasPointing = true; 
+                } else { 
+                    STATE.wasPointing = false;
+                }
+            }
+            // Hand smoothing
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+            
+            STATE.fireworks = STATE.fireworks.filter(fw => {
+                fw.update(dt);
+                return fw.alive;
+            });
+            
+            if (galaxySystem && galaxySystem.visible) {
+                bgGroup.rotation.y -= 0.05 * dt; 
+            } else if (snowSystem && snowSystem.visible) {
+                const positions = snowSystem.geometry.attributes.position.array;
+                const velocities = snowSystem.geometry.attributes.velocity.array;
+                const count = CONFIG.particles.snowCount;
+                for(let i=0; i<count; i++) {
+                    positions[i*3+1] -= CONFIG.particles.snowSpeed * velocities[i] * dt;
+                    if (positions[i*3+1] < -50) positions[i*3+1] = 50;
+                }
+                snowSystem.geometry.attributes.position.needsUpdate = true;
+                bgGroup.rotation.y -= 0.02 * dt; 
+            }
+            composer.render();
+        }
+
+        function setupEvents() {
+            window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); });
+        }
+        init();
+    </script>
+
+    <!-- 微信服务号推广 -->
+    <div id="wechat-promo" style="position: absolute; bottom: 10px; left: 0; width: 100%; text-align: center; z-index: 90; pointer-events: none; color: rgba(255, 200, 200, 0.35); font-family: 'Cinzel', serif; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">
+        <p style="margin: 3px 0; color: rgba(255, 215, 0, 0.5); font-weight: 600;">AI 偕行 · 新春特别版</p>
+        <p style="margin: 2px 0;">🧧 恭贺新禧，万事如意</p>
+        <p style="margin: 2px 0;">🔍 更多进阶玩法，关注「AI 偕行」</p>
+    </div>
+</body>
+</html>
