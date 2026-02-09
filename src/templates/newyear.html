@@ -1049,6 +1049,16 @@
         // const loader = document.getElementById('loader');
         // setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 1200); }, 500);
 
+        // 3. Fallback Timeout (Modification 3)
+        setTimeout(() => {
+             const loader = document.getElementById("loader");
+             if (loader && loader.parentNode) {
+                 console.warn("Loader timeout fallback triggered");
+                 loader.style.opacity = 0;
+                 setTimeout(() => loader.remove(), 1000);
+             }
+        }, 8000);
+
         initMediaPipe();
 
         // Start Auto Firework Timer (Every 4 seconds)
@@ -1800,8 +1810,21 @@
         const img = new Image();
         img.crossOrigin = "Anonymous";
         img.src = url;
+
+        // 1. Error Handling (Modification 1)
+        img.onerror = () => {
+             console.error("Image load failed:", url);
+             const loader = document.getElementById("loader");
+             if (loader) {
+               loader.style.opacity = 0;
+               setTimeout(() => loader.remove(), 1000);
+             }
+        };
+
         img.onload = () => {
           if (myBatchId !== imageBatchId) return;
+
+          try { // 2. Try-catch (Modification 2 start)
 
           // CLEANUP: Remove old CAKE particles
           particleSystem = particleSystem.filter((p) => {
@@ -1944,6 +1967,15 @@
           onWindowResize();
 
           processBatch();
+        
+          } catch (e) { // 2. Try-catch (Modification 2 end)
+             console.error("Image processing error (CORS?):", e);
+             const loader = document.getElementById("loader");
+             if (loader) {
+                loader.style.opacity = 0; 
+                setTimeout(() => loader.remove(), 1000);
+             }
+          }
         };
       };
 
