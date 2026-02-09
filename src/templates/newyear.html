@@ -642,7 +642,7 @@
 
     <!-- 背景音乐：新年快乐歌 -->
     <audio id="bg-music" loop preload="auto">
-      <source src="../newyear.mp3" type="audio/mpeg" />
+      <source src="../newyearconfig/newyear.mp3" type="audio/mpeg" />
       您的浏览器不支持音频元素。
     </audio>
     <script>
@@ -788,12 +788,12 @@
 
       // Image Switching State
       const HORSE_IMAGES = [
-        "../horse1.jpg",
-        "../horse2.jpg",
-        "../horse3.jpg",
-        "../horse4.jpg",
-        "../horse5.jpg",
-        "../horse6.jpg",
+        "../newyearconfig/horse1.jpg",
+        "../newyearconfig/horse2.jpg",
+        "../newyearconfig/horse3.jpg",
+        "../newyearconfig/horse4.jpg",
+        "../newyearconfig/horse5.jpg",
+        "../newyearconfig/horse6.jpg",
       ];
       let currentImageIndex = 3; // Default starting at horse4 based on previous code
       let isSwitchingImage = false; // Lock to prevent multi-trigger
@@ -1954,7 +1954,7 @@
         birthdayLocalHeight = 16;
 
         // 2. Image Particles (Replaces Cake)
-        loadImageParticles("../horse1.jpg");
+        loadImageParticles("../newyearconfig/horse1.jpg");
         cakeGroup.rotation.y = 0;
         cakeGroup.rotation.z = 0;
       }
