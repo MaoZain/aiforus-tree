@@ -592,7 +592,6 @@
         <div class="letter-close" onclick="closeLetter()">×</div>
         <div class="letter-content" id="letter-text">
           {{LETTER_HTML_CONTENT}}.
-          新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试
         </div>
       </div>
     </div>
@@ -1489,7 +1488,7 @@
       function incrementShake() {
         shakeCount++;
         const shakeHint = document.getElementById("shaking-hint");
-        shakeHint.innerText = `👋 请左右挥手摇签 (${shakeCount}/${TARGET_SHAKES})`;
+        shakeHint.innerText = `请左右保持👌手势挥手摇签 (${shakeCount}/${TARGET_SHAKES})`;
 
         // Haptic/Visual Feedback: Sticks jump up
         const stickGroup = document.getElementById("stick-group");
@@ -1834,18 +1833,16 @@
           const data = ctx.getImageData(0, 0, w, h).data;
 
           // Target ~8000 particles (High Definition)
-          const samplingStep = Math.max(1, Math.floor(Math.sqrt((w * h) / 8000)));
+          const particlesTarget = isMobile ? 5000 : 8000;
+          const samplingStep = Math.max(1, Math.floor(Math.sqrt((w * h) / particlesTarget)));
 
           const cx = w / 2;
           const cy = h / 2;
-          // Scale to roughly Width 40 in world units
-          // 计算当前视角的可见宽度
-          const vFov = (camera.fov * Math.PI) / 180;
-          const visibleHeight = 2 * Math.tan(vFov / 2) * camera.position.z;
-          const visibleWidth = visibleHeight * (window.innerWidth / window.innerHeight);
 
-          // 设置为可见宽度的 80%
-          const worldScale = (visibleWidth * 0.6) / w;
+          // 标准化生成：强制将图片映射为世界坐标中宽度为 40 的物体
+          // 解耦生成尺寸与屏幕尺寸，防止手机端双重缩小
+          const targetWorldWidth = 40;
+          const worldScale = targetWorldWidth / w;
 
           // 1. Pre-calculate all valid pixels
           const validPixels = [];
@@ -1984,6 +1981,9 @@
         const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
         const visibleWidth = visibleHeight * camera.aspect;
 
+        // 定义设备形态：竖屏/横屏
+        const isPortrait = camera.aspect < 1.0;
+
         // 1. Text Scales (40% total height, split with 2% gap)
         const gapH = visibleHeight * 0.01;
         const textTotalTargetH = visibleHeight * 0.4 - gapH;
@@ -1996,8 +1996,10 @@
         let bScale = bdayTargetH / birthdayLocalHeight;
 
         // --- 新增逻辑：限制字体左右边距 (Width Constraint) ---
+        // 优化：手机竖屏下允许字体更宽 (0.96)，充分利用屏幕
         const estimatedTextOriginalWidth = 140;
-        const maxTextWidth = visibleWidth * 0.85; // 限制为屏幕宽度的 85%
+        const widthRatio = isPortrait ? 0.96 : 0.85; 
+        const maxTextWidth = visibleWidth * widthRatio;
         const maxScaleByWidth = maxTextWidth / estimatedTextOriginalWidth;
 
         hScale = Math.min(hScale, maxScaleByWidth);
@@ -2006,11 +2008,13 @@
         happyGroup.scale.set(hScale, hScale, hScale);
         birthdayGroup.scale.set(bScale, bScale, bScale);
 
-        // 2. Cake Scale (修复蛋糕变形逻辑)
-        // Increased by ~10% (0.4 -> 0.45)
-        const cakeTargetH = visibleHeight * 0.5;
-        // 手机上蛋糕可以大一点(0.60)，电脑上小一点(0.35) - Increased by 10-15%
-        const cakeWidthRatio = isMobile ? 0.6 : 0.4;
+        // 2. Cake Scale (自适应布局)
+        const cakeTargetH = visibleHeight * 0.5; // 高度始终限制在 50% 以内
+
+        // 宽度策略：竖屏占 90%，横屏占 45%
+        // (isPortrait 已在上面定义)
+        const cakeWidthRatio = isPortrait ? 0.90 : 0.45;
+        
         const cakeTargetW = visibleWidth * cakeWidthRatio;
 
         const cakeScaleH = cakeTargetH / cakeLocalHeight;
