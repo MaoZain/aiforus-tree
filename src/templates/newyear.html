@@ -147,7 +147,7 @@
         "imports": {
           "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
           "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-          "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs"
+          "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm"
         }
       }
     </script>
@@ -1064,7 +1064,7 @@
           handLandmarker = await HandLandmarker.createFromOptions(vision, {
             baseOptions: {
               modelAssetPath:
-                "../mediapipe/hand_landmarker.task",
+                "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
               delegate: "GPU",
             },
             runningMode: "VIDEO",
