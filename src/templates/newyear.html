@@ -1,0 +1,2160 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Happy New Year - Celebration Magic</title>
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Ma+Shan+Zheng&family=Zhi+Mang+Xing&family=Gloria+Hallelujah&display=swap");
+
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+        font-family: "Cinzel", serif;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #canvas-container {
+        width: 100vw;
+        height: 100vh;
+        position: absolute;
+        z-index: 1;
+      }
+
+      /* UI Layer */
+      #ui-layer {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+        pointer-events: none;
+      }
+
+      /* Loader */
+      #loader {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 1.2s;
+        pointer-events: none;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 2px solid rgba(255, 215, 0, 0.1);
+        border-top: 2px solid #ffd700;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Controls */
+      #top-right-controls {
+        position: absolute;
+        top: 30px;
+        right: 30px;
+        z-index: 30;
+        display: flex;
+        gap: 15px;
+        pointer-events: auto;
+      }
+      .control-btn {
+        background: rgba(20, 20, 20, 0.6);
+        border: 1px solid rgba(212, 175, 55, 0.4);
+        color: #d4af37;
+        width: 36px;
+        height: 36px;
+        border-radius: 5px;
+        cursor: pointer;
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s;
+      }
+      .control-btn svg {
+        width: 20px;
+        height: 20px;
+        fill: currentColor;
+      }
+      .control-btn:hover {
+        background: rgba(212, 175, 55, 0.2);
+        border-color: #d4af37;
+        transform: scale(1.1);
+      }
+
+      /* Bottom Text */
+      #bottom-text {
+        position: absolute;
+        bottom: 5%;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        color: #fff;
+        font-family: "Microsoft YaHei", sans-serif;
+        font-size: 18px;
+        letter-spacing: 2px;
+        text-shadow:
+          0 0 10px rgba(255, 255, 255, 0.5),
+          0 0 20px rgba(255, 105, 180, 0.3);
+        animation: softGlow 3s ease-in-out infinite;
+        pointer-events: none;
+        z-index: 20;
+        opacity: 0.8;
+      }
+      @keyframes softGlow {
+        0%,
+        100% {
+          transform: scale(1);
+          filter: brightness(1);
+        }
+        50% {
+          transform: scale(1.02);
+          filter: brightness(1.3);
+        }
+      }
+
+      /* Hide anything else */
+      #gesture-hint,
+      #webcam-wrapper,
+      #letter-editor-modal {
+        display: none !important;
+      }
+    </style>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+          "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm"
+        }
+      }
+    </script>
+    <style>
+      /* Webcam visible bottom-left */
+      #webcam {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        width: 160px;
+        height: auto;
+        opacity: 0.7;
+        z-index: 200;
+        border: 1px solid rgba(212, 175, 55, 0.5);
+        border-radius: 8px;
+        transform: scaleX(-1);
+      }
+
+      @media (max-width: 1000px) {
+        #webcam {
+          width: 100px !important;
+          bottom: 10px;
+          left: 10px;
+        }
+        .control-btn {
+          width: 32px !important;
+          height: 32px !important;
+        }
+        .control-btn svg {
+          width: 18px !important;
+          height: 18px !important;
+        }
+        #top-left-hint {
+          font-size: 10px !important;
+          padding: 6px 10px !important;
+          top: 10px !important;
+          left: 10px !important;
+        }
+
+        #ui-layer #top-left-hint {
+          transform: scale(0.85); /* 整体再缩小一点 */
+          transform-origin: top left;
+        }
+
+        #wechat-promo {
+          bottom: 10px !important; /* 稍微抬高避免被遮挡 */
+          transform: scale(0.7); /* 整体缩小 15% */
+          transform-origin: bottom center;
+        }
+
+        #wechat-promo p {
+          margin: 2px 0 !important;
+        }
+      }
+      /* Gesture UI Overlay */
+      #gesture-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 200;
+        pointer-events: none;
+      }
+
+      /* Firework Label */
+      .firework-label {
+        position: absolute;
+        background-color: rgba(240, 0, 86, 0.7); /* #f00056 with 70% opacity */
+        color: #fff; /* White text for visibility against pink */
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: bold;
+        font-family: "Microsoft YaHei", sans-serif;
+        pointer-events: none;
+        z-index: 300;
+        white-space: nowrap;
+        transform: translate(-50%, -50%);
+        animation: fadeInOut 2s ease-in-out forwards;
+        box-shadow: 0 0 10px rgba(240, 0, 86, 0.5);
+      }
+
+      @keyframes fadeInOut {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.8);
+        }
+        20% {
+          opacity: 1;
+          transform: translate(-50%, -60%) scale(1.1);
+        }
+        80% {
+          opacity: 1;
+          transform: translate(-50%, -70%) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -80%) scale(0.9);
+        }
+      }
+
+      /* Letter Overlay */
+      #letter-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.5s ease;
+      }
+      #letter-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .letter-container {
+        background: #fff;
+        width: 90%;
+        max-width: 600px;
+        height: 80%;
+        padding: 40px;
+        box-sizing: border-box;
+        border-radius: 4px;
+        box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+        font-family: "Ma Shan Zheng", cursive, serif;
+        color: #333;
+        overflow-y: auto;
+        position: relative;
+        transform: scale(0.8);
+        transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        /* Old paper texture effect */
+        background-color: #f4e4bc;
+        background-image: linear-gradient(#e8dcb9 1px, transparent 1px);
+        background-size: 100% 30px;
+        line-height: 30px;
+      }
+      #letter-overlay.show .letter-container {
+        transform: scale(1);
+      }
+      .letter-close {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        font-size: 30px;
+        cursor: pointer;
+        color: #8b4513;
+        font-family: sans-serif;
+        font-weight: bold;
+      }
+      .letter-content {
+        font-size: 24px;
+        text-indent: 2em;
+        margin-bottom: 30px;
+      }
+      .letter-content p {
+        font-size: 24px;
+        text-indent: 2em;
+        margin-bottom: 30px;
+      }
+      .letter-signature {
+        text-align: right;
+        margin-top: 50px;
+        font-size: 24px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Webcam Elements -->
+    <video id="webcam" playsinline autoplay></video>
+    <canvas id="gesture-canvas"></canvas>
+
+    <div id="lottery-overlay">
+      <!-- New CSS 3D Shaker Container -->
+      <div id="lottery-shaker" class="lottery-container">
+        <!-- Sticks -->
+        <div id="stick-group" class="stick-group">
+          <!-- Generated by JS -->
+        </div>
+        <!-- Body -->
+        <div class="cylinder-body">
+          <div class="cylinder-fu"><span>福</span></div>
+        </div>
+      </div>
+      <!-- Special Flying Stick -->
+      <div id="flying-stick" class="flying-stick"></div>
+
+      <div id="lottery-card" class="lottery-card">
+        <div class="seal">上上签</div>
+        <div id="lottery-title" class="lottery-title"></div>
+        <div id="lottery-text" class="lottery-text"></div>
+        <div id="lottery-sub" class="lottery-sub"></div>
+      </div>
+      <div id="lottery-hint" class="lottery-hint" style="display: none">✊ 握拳收下好运</div>
+      <div id="shaking-hint" class="lottery-hint" style="display: none; font-size: 24px">👋 请左右挥手摇签 (0/5)</div>
+    </div>
+
+    <!-- Letter Overlay -->
+    <style>
+      /* 抽签 UI 样式 */
+      #lottery-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 200;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.5s;
+        backdrop-filter: blur(8px);
+      }
+      #lottery-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      /* 摇签筒容器 (Container) */
+      .lottery-container {
+        width: 200px;
+        height: 300px;
+        position: relative;
+        display: none;
+        transition: transform 0.1s linear; /* Smooth follow */
+      }
+      .lottery-container.active {
+        display: block;
+      }
+
+      /* 签筒本体 (Cylinder Body) */
+      .cylinder-body {
+        width: 140px;
+        height: 200px;
+        background: linear-gradient(90deg, #8b0000 0%, #b22222 50%, #8b0000 100%);
+        border-radius: 10px 10px 40px 40px; /* Slight curve at bottom */
+        position: absolute;
+        bottom: 0;
+        left: 30px;
+        box-shadow:
+          0 10px 20px rgba(0, 0, 0, 0.5),
+          inset 0 5px 15px rgba(0, 0, 0, 0.3);
+        border: 4px solid #ffd700;
+        z-index: 2;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      /* 福字 */
+      .cylinder-fu {
+        font-family: "Ma Shan Zheng", serif;
+        font-size: 80px;
+        color: #ffd700;
+        background: #b22222;
+        width: 90px;
+        height: 90px;
+        border-radius: 5px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: 2px solid #ffd700;
+        transform: rotate(45deg);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      }
+      .cylinder-fu span {
+        transform: rotate(-45deg);
+        display: block;
+        margin-top: -10px;
+      }
+
+      /* 签子群 (Bamboo Sticks Group) */
+      .stick-group {
+        position: absolute;
+        top: 40px;
+        left: 50px;
+        width: 100px;
+        height: 180px;
+        z-index: 1;
+        transition: transform 0.2s ease-out;
+      }
+      /* 单根签子样式 */
+      .bamboo-stick {
+        width: 8px;
+        height: 220px;
+        background: #e6cfa3; /* Bamboo color */
+        border-right: 1px solid #d1b480;
+        position: absolute;
+        bottom: 0;
+        border-radius: 4px 4px 0 0;
+      }
+      /* Tag on stick */
+      .bamboo-stick::after {
+        content: "";
+        position: absolute;
+        top: 10px;
+        left: 1px;
+        width: 6px;
+        height: 20px;
+        background: #c93756;
+      }
+
+      /* 选中的神签 (Flying Stick) */
+      .flying-stick {
+        position: absolute;
+        width: 12px;
+        height: 280px;
+        background: #ffd700;
+        left: 50%;
+        top: 50%;
+        display: none;
+        z-index: 10;
+        border: 2px solid #fff;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 30px #ffd700;
+      }
+      .flying-stick.animate {
+        display: block;
+        animation: stickFly 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+      }
+      @keyframes stickFly {
+        0% {
+          transform: translate(-50%, 0) scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: translate(-50%, -150%) scale(1.2) rotate(360deg);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(-50%, -200%) scale(0.1);
+          opacity: 0;
+        } /* Disappear into card */
+      }
+
+      /* 签文卡片 */
+      .lottery-card {
+        width: 300px;
+        height: 500px;
+        background: #fff;
+        border: 8px solid #d4af37;
+        border-radius: 15px;
+        box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+        position: relative;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        padding: 30px 20px;
+        text-align: center;
+        transform: scale(0.5);
+        opacity: 0;
+        background-image:
+          radial-gradient(circle at 50% 50%, rgba(255, 0, 0, 0.05) 0%, rgba(255, 0, 0, 0) 60%),
+          url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4af37' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      }
+      .lottery-card.show {
+        display: flex;
+        animation: cardReveal 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+      @keyframes cardReveal {
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .seal {
+        width: 120px;
+        height: 120px;
+        border: 4px solid #c93756;
+        border-radius: 10px;
+        color: #c93756;
+        font-size: 32px;
+        font-weight: bold;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transform: rotate(-15deg);
+        margin-bottom: 20px;
+        box-shadow:
+          inset 0 0 0 4px #c93756,
+          0 0 10px rgba(201, 55, 86, 0.3);
+        text-shadow: 2px 2px 0px rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.8);
+        writing-mode: vertical-rl; /* 竖排文字 */
+        letter-spacing: 8px;
+      }
+
+      .lottery-title {
+        font-size: 28px;
+        color: #333;
+        margin: 10px 0;
+        font-weight: bold;
+        font-family: "Cinzel", serif;
+      }
+      .lottery-text {
+        font-size: 18px;
+        color: #555;
+        margin: 10px 0;
+        line-height: 1.6;
+      }
+      .lottery-sub {
+        margin-top: auto;
+        padding-top: 20px;
+        border-top: 1px dashed #ccc;
+        font-size: 14px;
+        color: #888;
+        width: 100%;
+      }
+      .lottery-hint {
+        margin-top: 30px;
+        color: #ffd700;
+        font-size: 16px;
+        animation: pulseHint 2s infinite;
+      }
+      @keyframes pulseHint {
+        0% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.6;
+        }
+      }
+    </style>
+
+    <div id="letter-overlay">
+      <div class="letter-container">
+        <div class="letter-close" onclick="closeLetter()">×</div>
+        <div class="letter-content" id="letter-text">
+          {{LETTER_HTML_CONTENT}}.
+          新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试新年快乐测试字体大小测试测试测试测试
+        </div>
+      </div>
+    </div>
+
+    <div id="loader"><div class="spinner"></div></div>
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+      <div id="top-right-controls">
+        <button id="btn-music" class="control-btn" title="音乐">
+          <!-- Speaker Icon -->
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+            />
+          </svg>
+        </button>
+      </div>
+      <!-- 手势提示 -->
+      <div
+        id="top-left-hint"
+        style="
+          position: absolute;
+          top: 20px;
+          left: 20px;
+          z-index: 30;
+          background: rgba(20, 0, 0, 0.6);
+          border: 1px solid rgba(212, 175, 55, 0.4);
+          color: #d4af37;
+          padding: 10px 15px;
+          border-radius: 5px;
+          font-size: 12px;
+          pointer-events: none;
+          backdrop-filter: blur(5px);
+        "
+      >
+        <div>✌️ 胜利手势 → 打开贺卡</div>
+        <div>☝️ 食指 → 绽放烟花</div>
+        <!-- <div>👍 竖大拇指 → 切换图片</div> -->
+        <div>✋ 张开手掌 → 星系变换</div>
+        <div>✊ 握拳 → 恢复原状</div>
+        <div>👌 抽签 → 进入抽签模式</div>
+      </div>
+
+      <!-- <div id="bottom-text">XXX，今天有好好吃饭吗？</div> -->
+    </div>
+
+    <!-- 背景音乐：新年快乐歌 -->
+    <audio id="bg-music" loop preload="auto">
+      <source src="../newyear.mp3" type="audio/mpeg" />
+      您的浏览器不支持音频元素。
+    </audio>
+    <script>
+      (function () {
+        const audio = document.getElementById("bg-music");
+        const btn = document.getElementById("btn-music");
+        let isToggling = false; // 播放状态锁，防止并发操作导致 AbortError
+
+        const updateState = () => {
+          if (audio.paused) {
+            btn.style.background = "rgba(0, 0, 0, 0.4)"; // 暂停时变暗
+            btn.style.color = "rgba(255, 255, 255, 0.5)";
+            btn.style.border = "1px solid rgba(255, 255, 255, 0.3)";
+          } else {
+            btn.style.background = "rgba(212, 175, 55, 0.6)"; // 播放时高亮
+            btn.style.color = "#fff";
+            btn.style.border = "1px solid rgba(212, 175, 55, 0.8)";
+          }
+        };
+
+        // 初始化按钮样式
+        updateState();
+
+        const removeGlobalListeners = () => {
+          ["click", "touchstart", "keydown"].forEach((e) => document.removeEventListener(e, tryAutoPlay));
+        };
+
+        const toggleMusic = async (e) => {
+          e.stopPropagation();
+          // 防止移动端 click 和 touchstart 重复触发
+          if (e.type === "touchstart") e.preventDefault();
+
+          if (isToggling) return;
+          isToggling = true;
+
+          try {
+            if (audio.paused) {
+              await audio.play();
+              removeGlobalListeners();
+            } else {
+              audio.pause();
+            }
+            updateState();
+          } catch (err) {
+            console.error("Music toggle failed:", err);
+          } finally {
+            isToggling = false;
+          }
+        };
+
+        const tryAutoPlay = async (e) => {
+          // 如果点击的是控制按钮，则忽略，交由 toggleMusic 处理
+          if (e && e.target && (e.target === btn || btn.contains(e.target))) return;
+
+          if (isToggling || !audio.paused) return; // 已经在播放或正在切换
+
+          isToggling = true;
+          try {
+            await audio.play();
+            updateState();
+            removeGlobalListeners();
+          } catch (err) {
+            // console.log('Autoplay prevented, waiting for user interaction');
+          } finally {
+            isToggling = false;
+          }
+        };
+
+        btn.addEventListener("touchstart", toggleMusic, { passive: false });
+        btn.addEventListener("click", toggleMusic);
+
+        // 微信环境自动播放兼容
+        const fixWechatAudio = () => {
+          if (typeof WeixinJSBridge === "object") {
+            WeixinJSBridge.invoke("getNetworkType", {}, () => {
+              tryAutoPlay();
+            });
+          }
+        };
+
+        if (typeof WeixinJSBridge === "undefined") {
+          document.addEventListener("WeixinJSBridgeReady", fixWechatAudio, false);
+        } else {
+          fixWechatAudio();
+        }
+
+        // 绑定全局点击事件以触发播放
+        ["click", "touchstart", "keydown"].forEach((e) => document.addEventListener(e, tryAutoPlay));
+
+        // 尝试页面加载后立即播放
+        tryAutoPlay();
+      })();
+    </script>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+      import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+      import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+      import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
+
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const CONFIG = {
+        colors: { bg: 0x000000, gold: 0xffd700, pink: 0xff69b4, candle: 0xffffff },
+        particles: { textSpacing: isMobile ? 4 : 4, cakeDensity: isMobile ? 1300 : 2500 },
+        camera: { z: isMobile ? 65 : 65 },
+      };
+
+      let scene,
+        camera,
+        renderer,
+        composer,
+        clock = new THREE.Clock();
+      let mainGroup,
+        happyGroup,
+        birthdayGroup,
+        cakeGroup,
+        particleSystem = [];
+      let lanterns = [], lanternGroup;
+      let isGalaxyMode = false;
+      let rockets = []; // Array to manage auto-launching rockets
+      let happyLocalHeight = 0,
+        birthdayLocalHeight = 0,
+        cakeLocalHeight = 0,
+        cakeLocalWidth = 0;
+      const _tempVec = new THREE.Vector3();
+
+      // Gesture Globals
+      let handLandmarker;
+      const video = document.getElementById("webcam");
+      const gestureCanvas = document.getElementById("gesture-canvas");
+      const gestureCtx = gestureCanvas.getContext("2d");
+      let hoverStartTime = 0;
+      let lastHandPos = null;
+      let lastLetterHandPos = null; // Separate anchor for letter gesture
+      let lastThumbHandPos = null; // Specially for Thumb Up
+      let letterHoverStartTime = 0;
+      let thumbHoverStartTime = 0;
+
+      const HOVER_DURATION = 800; // 3s
+      // Sensitivity: 0.02 means 2% of screen width movement allowed
+      const HOVER_STABILITY_THRESHOLD = 0.03;
+
+      // Image Switching State
+      const HORSE_IMAGES = [
+        "../horse1.jpg",
+        "../horse2.jpg",
+        "../horse3.jpg",
+        "../horse4.jpg",
+        "../horse5.jpg",
+        "../horse6.jpg",
+      ];
+      let currentImageIndex = 3; // Default starting at horse4 based on previous code
+      let isSwitchingImage = false; // Lock to prevent multi-trigger
+
+      let gestureFireworkCount = 0; // Counter for grand finale
+      let isLetterOpen = false; // Interaction Lock
+
+      // Lottery Globals
+      let isLotteryOpen = false;
+      let shakeCount = 0;
+      const TARGET_SHAKES = 3;
+      let lastPalmX = 0.5;
+      let isRightSwing = false;
+      let isLeftSwing = false;
+
+      const LOTTERY_DATA = [
+        {
+          title: "【财运签】",
+          text: "财源滚滚随春到，喜气洋洋伴福来。",
+          sub: "解签：今年钱包像仓鼠，鼓鼓囊囊富流油！",
+        },
+        {
+          title: "【事业签】",
+          text: "大鹏一日同风起，扶摇直上九万里。",
+          sub: "解签：此时不搏更待何时？升职加薪，就在今朝！",
+        },
+        { title: "【健康签】", text: "吃嘛嘛香，身体倍儿棒。", sub: "解签：无病无灾，发量惊人，熬夜不秃头！" },
+        {
+          title: "【万能签】",
+          text: "心想事成，万事胜意。",
+          sub: "解签：你许愿的那个小目标，进度条已经加载到 99% 啦！",
+        },
+      ];
+
+      // Expose to window for onclick
+      window.closeLetter = function () {
+        const overlay = document.getElementById("letter-overlay");
+        overlay.classList.remove("show");
+        isLetterOpen = false;
+      };
+
+      function getTextPoints(text, fontSize, spacing) {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = 1024;
+        canvas.height = 200;
+        ctx.fillStyle = "white";
+        ctx.font = `bold ${fontSize}px "Cinzel", serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const points = [];
+        for (let y = 0; y < canvas.height; y += spacing) {
+          for (let x = 0; x < canvas.width; x += spacing) {
+            if (imageData.data[(y * canvas.width + x) * 4] > 128) {
+              points.push({
+                x: (x - canvas.width / 2) * 0.15,
+                y: -(y - canvas.height / 2) * 0.15,
+              });
+            }
+          }
+        }
+        return points;
+      }
+
+      class Particle {
+        constructor(mesh, posTarget, type = "TEXT", customData = {}) {
+          this.mesh = mesh;
+          this.type = type;
+          this.posTarget = posTarget.clone();
+          this.initialPos = posTarget.clone(); // Save initial position for restore
+
+          this.mesh.position.copy(
+            type === "FIREWORK"
+              ? posTarget
+              : new THREE.Vector3(
+                  (Math.random() - 0.5) * 100,
+                  (Math.random() - 0.5) * 100,
+                  (Math.random() - 0.5) * 100,
+                ),
+          );
+
+          // Base movement
+          this.offset = Math.random() * Math.PI * 2;
+          this.speed = 0.5 + Math.random();
+          this.shimmerSpeed = 2 + Math.random() * 3;
+          this.brightnessOffset = Math.random();
+
+          // Firework Physics
+          this.velocity = new THREE.Vector3();
+          this.life = 1.0;
+
+          // Custom data for firework trail
+          this.trailIndex = customData.trailIndex || 0;
+          this.trailMax = customData.trailMax || 1;
+
+          // Galaxy Mode Data
+          const radius = 10 + Math.random() * 30;
+          const angle = Math.random() * Math.PI * 2;
+          this.galaxyData = {
+            radius: radius,
+            angle: angle,
+            speed: (50 / (radius + 1)) * 0.3, // Inner fast, outer slow
+            yOffset: (Math.random() - 0.5) * 8,
+          };
+        }
+
+        update(dt, time) {
+          if (this.type === "FIREWORK") {
+            this.life -= dt * 0.8; // Fade over ~2.5s
+            // No gravity: this.velocity.y -= 25 * dt;
+            this.velocity.multiplyScalar(0.98); // Air drag
+            this.mesh.position.addScaledVector(this.velocity, dt);
+
+            // Opacity Logic: Head brightest
+            const trailFactor = 1.0 - this.trailIndex / this.trailMax;
+            const alpha = Math.pow(trailFactor, 2) * Math.max(0, this.life);
+
+            this.mesh.material.opacity = alpha;
+            this.mesh.material.emissiveIntensity = alpha * 3.0; // Bright head
+            this.mesh.visible = this.life > 0;
+
+            // Scale: Head large, tail small (Reduced size by half from 1.0 range to 0.5 range)
+            // Original was 0.5 + 0.5*factor -> range 0.5-1.0
+            // New: 0.25 + 0.25*factor -> range 0.25-0.5
+            const scale = 0.25 + 0.25 * trailFactor;
+            this.mesh.scale.setScalar(scale);
+
+            return;
+          }
+
+          if (isGalaxyMode) {
+            const g = this.galaxyData;
+            g.angle += g.speed * dt;
+
+            const targetX = Math.cos(g.angle) * g.radius;
+            const targetZ = Math.sin(g.angle) * g.radius;
+            // Raise the galaxy center by 12 units (approx 50% of screen height from center to top)
+            const targetY = g.yOffset + 10;
+
+            this.mesh.position.lerp(new THREE.Vector3(targetX, targetY, targetZ), 2.0 * dt);
+            this.mesh.material.emissiveIntensity = 2.0 + Math.sin(time * 5 + this.offset) * 1.0;
+            return;
+          }
+
+          if (this.type === "CAKE") {
+            // Slow assembly for image particles
+            // Speed is set in loader to ~0.5. Multiplying by 2.0 gives ~1.0 factor.
+            // dt is ~0.016. Lerp factor ~0.016. Settle time ~3s.
+            const s = this.speed || 1.0;
+            this.mesh.position.lerp(this.posTarget, s * 2.0 * dt);
+          } else if (this.type === "PEARL" || this.type === "GEM") {
+            // Pearls and gems stay more stable but shimmer
+            const target = this.posTarget;
+            this.mesh.position.lerp(target, 2.0 * dt);
+          } else {
+            _tempVec.copy(this.posTarget);
+            // Ethereal floating motion
+            _tempVec.y += Math.sin(time * this.speed + this.offset) * 0.15;
+            _tempVec.x += Math.cos(time * 0.6 * this.speed + this.offset) * 0.1;
+            _tempVec.z += Math.sin(time * 0.4 * this.speed + this.offset) * 0.1;
+            this.mesh.position.lerp(_tempVec, 1.2 * dt);
+          }
+
+          // Shimmering effect
+          const shimmer = Math.sin(time * this.shimmerSpeed + this.offset * 10);
+          const baseIntensity = this.type === "TEXT" || this.type === "GEM" || this.type === "FLAME" ? 1.5 : 0.6;
+          this.mesh.material.emissiveIntensity = baseIntensity + shimmer * 0.5;
+        }
+      }
+
+      function createLanterns() {
+          lanternGroup = new THREE.Group();
+          scene.add(lanternGroup);
+
+          const geo = new THREE.CylinderGeometry(0.6, 0.4, 1.2, 8, 1, true); 
+          const mat = new THREE.MeshStandardMaterial({
+              color: 0xff4500, 
+              emissive: 0xff6600,
+              emissiveIntensity: 2.0, 
+              transparent: true,
+              opacity: 0.85,
+              roughness: 0.8,
+              side: THREE.DoubleSide
+          });
+
+          for(let i=0; i<40; i++) {
+              const mesh = new THREE.Mesh(geo, mat);
+              const x = (Math.random() - 0.5) * 160; 
+              const y = (Math.random() - 0.5) * 80;
+              const z = -60 - Math.random() * 80; 
+              
+              mesh.position.set(x, y, z);
+              mesh.rotation.y = Math.random() * Math.PI * 2;
+              
+              lanternGroup.add(mesh);
+              
+              lanterns.push({
+                  mesh: mesh,
+                  speed: 1.0 + Math.random() * 2.5,
+                  phase: Math.random() * Math.PI * 2,
+                  wobbleSpeed: 0.5 + Math.random() * 0.5
+              });
+          }
+      }
+
+      function updateLanterns(dt, time) {
+          lanterns.forEach(l => {
+              l.mesh.position.y += l.speed * dt;
+              l.mesh.position.x += Math.sin(time * l.wobbleSpeed + l.phase) * dt * 2.0;
+              l.mesh.rotation.y += dt * 0.3;
+              if (l.mesh.position.y > 60) {
+                  l.mesh.position.y = -50;
+                  l.mesh.position.x = (Math.random() - 0.5) * 160;
+              }
+          });
+      }
+
+      async function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(CONFIG.colors.bg);
+
+        camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, CONFIG.camera.z);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.getElementById("canvas-container").appendChild(renderer.domElement);
+
+        mainGroup = new THREE.Group();
+        happyGroup = new THREE.Group();
+        birthdayGroup = new THREE.Group();
+        cakeGroup = new THREE.Group();
+        mainGroup.add(happyGroup);
+        mainGroup.add(birthdayGroup);
+        mainGroup.add(cakeGroup);
+        scene.add(mainGroup);
+
+        setupLights();
+        createParticles();
+        createLanterns();
+        setupPostProcessing();
+
+        window.addEventListener("resize", onWindowResize);
+        onWindowResize();
+
+        // Loader removal is now handled by loadImageParticles to ensure sync
+        // const loader = document.getElementById('loader');
+        // setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 1200); }, 500);
+
+        initMediaPipe();
+
+        // Start Auto Firework Timer (Every 4 seconds)
+        setInterval(launchAutoFirework, 4000);
+
+        animate();
+      }
+
+      async function initMediaPipe() {
+        try {
+          const vision = await FilesetResolver.forVisionTasks(
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm",
+          );
+          handLandmarker = await HandLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath:
+                "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+              delegate: "GPU",
+            },
+            runningMode: "VIDEO",
+            numHands: 1,
+          });
+
+          // Start Webcam (Updated Logic)
+          if (navigator.mediaDevices?.getUserMedia) {
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                  facingMode: "user",
+                  width: { ideal: 640 },
+                  height: { ideal: 480 },
+                },
+                audio: false,
+              });
+              video.srcObject = stream;
+
+              // 立即尝试播放，这对于某些移动浏览器是必要的
+              const playPromise = video.play();
+              if (playPromise !== undefined) {
+                playPromise.catch((error) => {
+                  console.warn("视频自动播放初始尝试失败（在移动端是正常现象）:", error);
+                  // 即使失败，我们仍然依赖 loadeddata 事件
+                });
+              }
+
+              video.addEventListener("loadeddata", () => {
+                // 元数据加载后再次尝试播放，此时成功率更高
+                video
+                  .play()
+                  .then(() => {
+                    predictWebcam();
+                  })
+                  .catch((error) => {
+                    console.error("在 'loadeddata' 事件后播放视频失败:", error);
+                    alert("无法自动播放摄像头视频。请尝试点击屏幕或刷新页面。");
+                  });
+              });
+            } catch (err) {
+              console.error("获取摄像头媒体流失败:", err);
+              alert(`无法访问摄像头。请确保您已授予摄像头权限。\n错误: ${err.name}`);
+            }
+          } else {
+            console.warn("浏览器不支持 getUserMedia");
+            alert("您的浏览器不支持摄像头功能。");
+          }
+        } catch (error) {
+          console.error("MediaPipe/Webcam init failed:", error);
+        }
+      }
+
+      let lastVideoTime = -1;
+      async function predictWebcam() {
+        if (video.currentTime !== lastVideoTime && handLandmarker) {
+          lastVideoTime = video.currentTime;
+          const result = handLandmarker.detectForVideo(video, performance.now());
+
+          // Clear UI Canvas
+          gestureCtx.clearRect(0, 0, gestureCanvas.width, gestureCanvas.height);
+
+          if (result.landmarks && result.landmarks.length > 0) {
+            processGestures(result.landmarks[0]);
+          } else {
+            // No hand detected, reset hover
+            resetHover();
+          }
+        }
+        requestAnimationFrame(predictWebcam);
+      }
+
+      function resetHover() {
+        hoverStartTime = 0;
+        // Also reset letter timer if hand lost
+        letterHoverStartTime = 0;
+        thumbHoverStartTime = 0;
+      }
+
+      function processGestures(landmarks) {
+        // Stop processing if letter is already open
+        if (isLetterOpen) return;
+
+        // Mirror x
+        const palmX = 1.0 - landmarks[9].x;
+        const palmY = landmarks[9].y;
+        const palmPos = { x: palmX, y: palmY };
+
+        // Helper for distance
+        const dist = (i, j) => Math.hypot(landmarks[i].x - landmarks[j].x, landmarks[i].y - landmarks[j].y);
+
+        // --- Gesture Detection Logic ---
+        const isFingerExtended = (tip, mcp) => dist(0, tip) > dist(0, mcp) * 1.2;
+        const isFingerCurled = (tip, mcp) => dist(0, tip) < dist(0, mcp) * 1.1;
+
+        const indexExt = isFingerExtended(8, 5); // Index
+        const midExt = isFingerExtended(12, 9); // Middle
+        const ringExt = isFingerExtended(16, 13); // Ring
+        const pinkyExt = isFingerExtended(20, 17); // Pinky
+        const indexCurled = isFingerCurled(8, 5);
+        const midCurled = isFingerCurled(12, 9);
+        const ringCurled = isFingerCurled(16, 13);
+        const pinkyCurled = isFingerCurled(20, 17);
+
+        // Thumb Logic Refined
+        // 1. Thumb Tip (4) must be higher than IP (3)
+        // 2. Thumb Tip (4) must be significantly higher than Index Base (MCP 5) to distinguish from Fist
+        // Note: Y increases downwards.
+        const isThumbRigid = landmarks[4].y < landmarks[3].y;
+        const isThumbHigh = landmarks[4].y < landmarks[5].y - 0.05;
+
+        // 0. Peace Sign -> Open Letter
+        const isPeace = indexExt && midExt && ringCurled && pinkyCurled;
+        const thumbIndexDist = dist(4, 8); // Thumb tip to Index tip
+        const palmScale = dist(0, 9); // Scale reference (Wrist to Middle MCP)
+        // OK Gesture: Thumb and Index tips close, others extended
+        // Threshold: 0.2 * palmScale (relative)
+        const isOK = thumbIndexDist < 0.25 * palmScale && midExt && ringExt && pinkyExt;
+
+        if (isOK) {
+          if (!isLotteryOpen) {
+            if (!lastHandPos) {
+              lastHandPos = palmPos;
+              hoverStartTime = performance.now();
+            } else {
+              const moveDist = Math.hypot(palmPos.x - lastHandPos.x, palmPos.y - lastHandPos.y);
+              if (moveDist < HOVER_STABILITY_THRESHOLD) {
+                // 3.0s -> 2.0s for quicker feel
+                const elapsed = performance.now() - hoverStartTime;
+                const progress = Math.min(1.0, elapsed / 1500); // 1.5s trigger
+                drawLotteryHoverUI(palmPos.x * gestureCanvas.width, palmPos.y * gestureCanvas.height, progress);
+
+                if (progress >= 1.0) {
+                  // Initialize Lottery Phase 1
+                  resetHover();
+                  initLotteryUI();
+                }
+              } else {
+                lastHandPos = palmPos;
+                hoverStartTime = performance.now();
+              }
+            }
+          } else {
+            // Lottery Mode: Handle Hand Tracking for Shaking
+            handleShakingGesture(palmPos);
+          }
+          return;
+        }
+
+        if (isPeace) {
+          // Reset other gestures
+          hoverStartTime = 0;
+          lastHandPos = null;
+
+          if (!lastLetterHandPos) {
+            lastLetterHandPos = palmPos;
+            letterHoverStartTime = performance.now();
+          } else {
+            const moveDist = Math.hypot(palmPos.x - lastLetterHandPos.x, palmPos.y - lastLetterHandPos.y);
+            if (moveDist < HOVER_STABILITY_THRESHOLD) {
+              if (letterHoverStartTime === 0) letterHoverStartTime = performance.now();
+              const elapsed = performance.now() - letterHoverStartTime;
+              const progress = Math.min(1.0, elapsed / 1000);
+
+              drawLetterUI(palmPos.x * gestureCanvas.width, palmPos.y * gestureCanvas.height, progress);
+
+              if (progress >= 1.0) {
+                document.getElementById("letter-overlay").classList.add("show");
+                isLetterOpen = true;
+                // Reset everything after success
+                resetHover();
+                lastLetterHandPos = null;
+              }
+            } else {
+              // Moved too much, reset/restart timer but keep tracking anchor
+              lastLetterHandPos = palmPos;
+              letterHoverStartTime = performance.now();
+            }
+          }
+          return;
+        } else {
+          // Lost peace sign
+          letterHoverStartTime = 0;
+          lastLetterHandPos = null;
+        }
+
+        // 1. Index Finger (1) -> Firework
+        const isOne = indexExt && midCurled && ringCurled && pinkyCurled;
+
+        if (isOne) {
+          if (!lastHandPos) {
+            lastHandPos = palmPos;
+            hoverStartTime = performance.now();
+          } else {
+            const moveDist = Math.hypot(palmPos.x - lastHandPos.x, palmPos.y - lastHandPos.y);
+            if (moveDist < (isMobile ? 0.05 : 0.03)) {
+              if (hoverStartTime === 0) hoverStartTime = performance.now();
+              const elapsed = performance.now() - hoverStartTime;
+              const progress = Math.min(1.0, elapsed / HOVER_DURATION);
+
+              // Firework UI (Red/Orange)
+              drawHoverUI(palmPos.x * gestureCanvas.width, palmPos.y * gestureCanvas.height, progress, "#FF4500");
+
+              if (progress >= 1.0) {
+                spawnFireworkAtScreenPos(palmPos.x, palmPos.y);
+                gestureFireworkCount++;
+                if (gestureFireworkCount % 3 === 0) setTimeout(triggerGrandFinale, 1000);
+
+                resetHover();
+                hoverStartTime = 0; // Force reset
+                lastHandPos = null; // Reset stability anchor
+              }
+            } else {
+              lastHandPos = palmPos;
+              hoverStartTime = performance.now();
+            }
+          }
+          return;
+        }
+
+        // 2. Open Palm (Spread) -> Galaxy Mode
+        const isSpread = indexExt && midExt && ringExt && pinkyExt;
+
+        if (isSpread) {
+          if (!isGalaxyMode) {
+            if (!lastHandPos) {
+              lastHandPos = palmPos;
+              hoverStartTime = performance.now();
+            } else {
+              const elapsed = performance.now() - hoverStartTime;
+              const progress = Math.min(1.0, elapsed / 500); // 0.5s fast trigger
+              // Galaxy UI (Purple)
+              drawHoverUI(palmPos.x * gestureCanvas.width, palmPos.y * gestureCanvas.height, progress, "#9932CC");
+
+              if (elapsed > 500) {
+                isGalaxyMode = true;
+                resetHover();
+              }
+            }
+          } else {
+            // In Galaxy Mode: Hand controls rotation
+            const rotSpeed = (palmPos.x - 0.5) * 4.0;
+            mainGroup.rotation.y += rotSpeed * 0.02;
+            mainGroup.rotation.x = (palmPos.y - 0.5) * 0.5;
+          }
+          return;
+        }
+
+        // 3. Fist -> Restore
+        // Strict: All fingers curled AND Thumb is NOT high up (prevent confusion with Thumb Up transition)
+        const isFist = indexCurled && midCurled && ringCurled && pinkyCurled && !isThumbHigh;
+
+        if (isFist) {
+          if (isLotteryOpen) {
+            closeLottery();
+            resetHover();
+            return;
+          }
+          if (isGalaxyMode) {
+            isGalaxyMode = false;
+
+            // Trigger Next Image
+            switchHorseImage();
+
+            // Tween back to 0
+            new TWEEN.Tween(mainGroup.rotation)
+              .to({ x: 0, y: 0, z: 0 }, 1000)
+              .easing(TWEEN.Easing.Quadratic.Out)
+              .start();
+            resetHover();
+          }
+        }
+
+        resetHover();
+      }
+
+      function switchHorseImage() {
+        currentImageIndex = (currentImageIndex + 1) % HORSE_IMAGES.length;
+        console.log("Switching to image:", HORSE_IMAGES[currentImageIndex]);
+        loadImageParticles(HORSE_IMAGES[currentImageIndex]);
+      }
+
+      function drawThumbHoverUI(x, y, progress) {
+        gestureCtx.save();
+        const radius = isMobile ? 30 : 40;
+
+        // Draw Text "Next"
+        gestureCtx.font = `bold ${isMobile ? 14 : 16}px Arial`;
+        gestureCtx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        gestureCtx.textAlign = "center";
+        gestureCtx.fillText("Next", x, y - radius - 10);
+
+        // Background circle
+        gestureCtx.beginPath();
+        gestureCtx.arc(x, y, radius, 0, Math.PI * 2);
+        gestureCtx.fillStyle = "rgba(0, 255, 255, 0.2)"; // Cyan tint
+        gestureCtx.fill();
+        gestureCtx.strokeStyle = "rgba(0, 255, 255, 0.5)";
+        gestureCtx.lineWidth = 2;
+        gestureCtx.stroke();
+
+        // Progress arc
+        if (progress > 0) {
+          gestureCtx.beginPath();
+          gestureCtx.arc(x, y, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+          gestureCtx.strokeStyle = "#00FFFF"; // Cyan
+          gestureCtx.lineWidth = 4;
+          gestureCtx.lineCap = "round";
+          gestureCtx.stroke();
+
+          // Glow
+          gestureCtx.shadowBlur = 10;
+          gestureCtx.shadowColor = "#00FFFF";
+          gestureCtx.stroke();
+        }
+
+        // Icon (Simplified Thumbs Up using Emoji)
+        gestureCtx.shadowBlur = 0;
+        gestureCtx.font = `${radius}px Arial`;
+        gestureCtx.textBaseline = "middle";
+        gestureCtx.fillText("👍", x, y + 2);
+
+        gestureCtx.restore();
+      }
+
+      function drawLotteryHoverUI(x, y, progress) {
+        gestureCtx.save();
+        const radius = isMobile ? 15 : 20; // Slightly larger
+
+        // Text hint
+        gestureCtx.fillStyle = "#FFD700";
+        gestureCtx.font = "bold 10px Arial";
+        gestureCtx.textAlign = "center";
+        gestureCtx.fillText("求签...", x, y - 35);
+
+        // Progress Arc
+        gestureCtx.beginPath();
+        gestureCtx.arc(x, y, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+        gestureCtx.strokeStyle = "#FFD700"; // Gold
+        gestureCtx.lineWidth = 6;
+        gestureCtx.shadowColor = "#FF0000";
+        gestureCtx.shadowBlur = 10;
+        gestureCtx.stroke();
+
+        gestureCtx.restore();
+      }
+
+      function initLotteryUI() {
+        if (isLotteryOpen) return;
+        isLotteryOpen = true;
+        shakeCount = 0;
+        isRightSwing = false;
+        isLeftSwing = false;
+
+        const overlay = document.getElementById("lottery-overlay");
+        const shaker = document.getElementById("lottery-shaker");
+        const shakeHint = document.getElementById("shaking-hint");
+        const stickGroup = document.getElementById("stick-group");
+
+        // Clean up previous state
+        document.getElementById("lottery-card").classList.remove("show");
+        document.getElementById("lottery-hint").style.display = "none";
+        document.getElementById("flying-stick").className = "flying-stick";
+
+        // Generate Sticks
+        stickGroup.innerHTML = "";
+        for (let i = 0; i < 15; i++) {
+          const stick = document.createElement("div");
+          stick.className = "bamboo-stick";
+          // Randomize stick pos
+          stick.style.left = Math.random() * 80 + 10 + "px";
+          stick.style.height = 210 + Math.random() * 30 + "px";
+          stick.style.transform = `rotate(${(Math.random() - 0.5) * 10}deg)`;
+          stickGroup.appendChild(stick);
+        }
+
+        overlay.classList.add("show");
+        shaker.classList.add("active"); // Show container
+        shakeHint.style.display = "block";
+        shakeHint.innerText = `👋 请左右挥手摇签 (0/${TARGET_SHAKES})`;
+        lastPalmX = 0.5; // Reset center
+      }
+
+      function handleShakingGesture(palmPos) {
+        // Only process if shaker is visible and card not yet shown
+        const shaker = document.getElementById("lottery-shaker");
+        const card = document.getElementById("lottery-card");
+        if (shakeCount >= TARGET_SHAKES || card.classList.contains("show")) return;
+
+        // 1. Visual Follow (Map Palm X 0..1 to Rotate -15..15)
+        // Mirror logic: Palm X 0 is Right on screen, 1 is Left.
+        // Expected: Hand Right (Screen Left) -> Rotate Left (-15)
+        // Hand Left (Screen Right) -> Rotate Right (+15)
+        const rot = (palmPos.x - 0.5) * 40; // Range approx -20 to 20
+        shaker.style.transform = `rotate(${rot}deg)`;
+
+        // Parallax sticks
+        const stickGroup = document.getElementById("stick-group");
+        stickGroup.style.transform = `translateX(${rot * 0.5}px)`; // Simple physics delay
+
+        // 2. Swing Detection
+        const delta = palmPos.x - lastPalmX;
+        const SWING_THRESHOLD = 0.05; // Significant move
+
+        if (delta > SWING_THRESHOLD) {
+          // Moving Right (in mirrored view)
+          isRightSwing = true;
+        } else if (delta < -SWING_THRESHOLD) {
+          // Moving Left
+          if (isRightSwing) {
+            // Completed a swing pair
+            incrementShake();
+            isRightSwing = false;
+          }
+        }
+        // Update last pos
+        // Slight smoothing
+        lastPalmX = lastPalmX * 0.8 + palmPos.x * 0.2;
+      }
+
+      function incrementShake() {
+        shakeCount++;
+        const shakeHint = document.getElementById("shaking-hint");
+        shakeHint.innerText = `👋 请左右挥手摇签 (${shakeCount}/${TARGET_SHAKES})`;
+
+        // Haptic/Visual Feedback: Sticks jump up
+        const stickGroup = document.getElementById("stick-group");
+        stickGroup.style.transition = "top 0.1s";
+        stickGroup.style.top = "10px"; // Jump up
+        setTimeout(() => {
+          stickGroup.style.top = "40px"; // Fall back
+        }, 100);
+
+        if (shakeCount >= TARGET_SHAKES) {
+          revealLotteryResult();
+        }
+      }
+
+      function revealLotteryResult() {
+        const shaker = document.getElementById("lottery-shaker");
+        const shakeHint = document.getElementById("shaking-hint");
+        const flyingStick = document.getElementById("flying-stick");
+
+        shakeHint.style.display = "none";
+
+        // 1. Fly Stick Animation
+        flyingStick.classList.add("animate");
+
+        // 2. Hide Shaker
+        setTimeout(() => {
+          shaker.classList.remove("active");
+        }, 800);
+
+        // 3. Show Card after animation
+        setTimeout(() => {
+          // Pick random data
+          const data = LOTTERY_DATA[Math.floor(Math.random() * LOTTERY_DATA.length)];
+          document.getElementById("lottery-title").innerText = data.title;
+          document.getElementById("lottery-text").innerText = data.text;
+          document.getElementById("lottery-sub").innerText = data.sub;
+
+          const card = document.getElementById("lottery-card");
+          card.classList.add("show");
+
+          const grabHint = document.getElementById("lottery-hint");
+          grabHint.style.display = "block"; // Show "Grab to keep" hint
+          grabHint.style.marginTop = "20px";
+        }, 1000);
+      }
+
+      function closeLottery() {
+        if (!isLotteryOpen) return;
+
+        const card = document.getElementById("lottery-card");
+        const overlay = document.getElementById("lottery-overlay");
+
+        // Visual Effect: Turn card into particles (simulated by scale down + opacity)
+        card.style.transition = "all 0.5s ease-in";
+        card.style.transform = "scale(0.1) rotate(360deg)";
+        card.style.opacity = "0";
+
+        // Gold Flight Effect (Optional, just visual feedback)
+        const hint = document.getElementById("lottery-hint");
+        hint.innerText = "好运已收入囊中！";
+
+        setTimeout(() => {
+          isLotteryOpen = false;
+          overlay.classList.remove("show");
+          // Reset card styles
+          setTimeout(() => {
+            card.style.transition = "";
+            card.style.transform = "";
+            card.classList.remove("show");
+          }, 500);
+        }, 800);
+      }
+
+      function drawLetterUI(x, y, progress) {
+        gestureCtx.save();
+        const radius = isMobile ? 15 : 20;
+        gestureCtx.beginPath();
+        gestureCtx.arc(x, y, 6, 0, Math.PI * 2);
+        gestureCtx.fillStyle = "#00FFFF"; // Cyan for Letter
+        gestureCtx.fill();
+
+        gestureCtx.beginPath();
+        gestureCtx.arc(x, y, radius, 0, Math.PI * 2);
+        gestureCtx.strokeStyle = "rgba(0, 255, 255, 0.3)";
+        gestureCtx.lineWidth = 4;
+        gestureCtx.stroke();
+
+        gestureCtx.beginPath();
+        gestureCtx.arc(x, y, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+        gestureCtx.strokeStyle = "#00FFFF";
+        gestureCtx.lineWidth = 4;
+        gestureCtx.stroke();
+
+        // Icon hint
+        gestureCtx.fillStyle = "#00FFFF";
+        gestureCtx.font = "16px Arial";
+        gestureCtx.textAlign = "center";
+        gestureCtx.fillText("✉", x, y - 25);
+
+        gestureCtx.restore();
+      }
+
+      function drawHoverUI(x, y, progress, color = "#FFD700") {
+        gestureCtx.save();
+        const radius = isMobile ? 15 : 20;
+        // Center Dot
+        gestureCtx.beginPath();
+        gestureCtx.arc(x, y, 6, 0, Math.PI * 2);
+        gestureCtx.fillStyle = color;
+        gestureCtx.fill();
+
+        // Outer Ring Background
+        gestureCtx.beginPath();
+        gestureCtx.arc(x, y, radius, 0, Math.PI * 2);
+        let strokeColor = "rgba(255, 255, 255, 0.3)";
+        if (color.startsWith("#") && color.length === 7) {
+          strokeColor = color + "4D"; // Add alpha
+        }
+        gestureCtx.strokeStyle = strokeColor;
+        gestureCtx.lineWidth = 4;
+        gestureCtx.stroke();
+
+        // Progress Arc
+        gestureCtx.beginPath();
+        gestureCtx.arc(x, y, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+        gestureCtx.strokeStyle = color;
+        gestureCtx.lineWidth = 4;
+        gestureCtx.stroke();
+
+        gestureCtx.restore();
+      }
+
+      function spawnFireworkAtScreenPos(nx, ny) {
+        // Screen (0..1) to NDC (-1..1)
+        // Note: nx is already 1-x from mediapipe (mirrored)
+        // But Three.js NDC x: -1 is left, 1 is right.
+        const ndcX = nx * 2 - 1;
+        const ndcY = -(ny * 2) + 1; // Top is 1
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+
+        // Intersect with a virtual plane at Z=0 (where cake/text is mostly)
+        const planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // Normal Z, Constant 0
+        const target = new THREE.Vector3();
+        raycaster.ray.intersectPlane(planeZ, target);
+
+        if (target) {
+          createFirework(target);
+
+          // Show label "祝你生日快乐啦"
+          // Screen coordinates can be derived from spawnFireworkAtScreenPos inputs (nx, ny)
+          // nx, ny are screen coordinates (0..1)
+          showFireworkLabel(nx * window.innerWidth, ny * window.innerHeight);
+        }
+      }
+
+      function showFireworkLabel(x, y) {
+        const label = document.createElement("div");
+        label.className = "firework-label";
+        label.innerText = "新年快乐";
+        label.style.left = x + "px";
+        label.style.top = y + "px";
+        document.body.appendChild(label);
+
+        // Remove after animation (2000ms)
+        setTimeout(() => {
+          if (label.parentNode) label.parentNode.removeChild(label);
+        }, 2000);
+      }
+
+      function createFirework(pos) {
+        // Colors: White, Red, Yellow, Purple
+        const palette = [0xffffff, 0xff0000, 0xffff00, 0x800080];
+
+        // Pick 2 random distinct colors
+        const idx1 = Math.floor(Math.random() * palette.length);
+        let idx2 = Math.floor(Math.random() * palette.length);
+        while (idx2 === idx1) idx2 = Math.floor(Math.random() * palette.length);
+
+        const color1 = palette[idx1];
+        const color2 = palette[idx2];
+
+        // Beams config (Increased count by 20%: 40 -> 48)
+        const beamCount = isMobile ? 24 : 48;
+        // Particles per beam (Previously 10, no change needed here, we lengthen via speed diff)
+        const particlesPerBeam = isMobile ? 10 : 15;
+
+        for (let i = 0; i < beamCount; i++) {
+          // Random spherical direction for this beam
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(Math.random() * 2 - 1);
+
+          // Set beam color (alternate)
+          const beamColor = i % 2 === 0 ? color1 : color2;
+
+          // Base speed for this beam
+          const beamBaseSpeed = 15 + Math.random() * 10;
+
+          const velocityDir = new THREE.Vector3(
+            Math.sin(phi) * Math.cos(theta),
+            Math.cos(phi),
+            Math.sin(phi) * Math.sin(theta),
+          ).normalize();
+
+          for (let k = 0; k < particlesPerBeam; k++) {
+            // To make trail longer by 70%, we need larger speed difference between head and tail
+            // Old factor step: 0.05
+            // New factor step: 0.05 * 1.7 = 0.085
+            const speedFactor = 1.0 - k * 0.085;
+            const speed = beamBaseSpeed * speedFactor;
+
+            // Size increased 30%: 0.2 -> 0.26
+            const size = 0.3;
+            const geo = new THREE.SphereGeometry(size, 8, 8);
+            const mat = new THREE.MeshStandardMaterial({
+              color: beamColor,
+              emissive: beamColor,
+              emissiveIntensity: 1.0, // Reduced glow intensity to reduce halo
+              transparent: true,
+              opacity: 1.0,
+              roughness: 0.1,
+              metalness: 0.1,
+            });
+
+            const mesh = new THREE.Mesh(geo, mat);
+            scene.add(mesh);
+
+            const p = new Particle(mesh, pos, "FIREWORK", {
+              trailIndex: k,
+              trailMax: particlesPerBeam,
+            });
+
+            p.velocity.copy(velocityDir).multiplyScalar(speed);
+            particleSystem.push(p);
+          }
+        }
+      }
+
+      function triggerGrandFinale() {
+        // Randomly spawn 8-11 fireworks over the screen
+        const count = isMobile ? 4 + Math.floor(Math.random() * 2) : 8 + Math.floor(Math.random() * 5);
+
+        for (let i = 0; i < count; i++) {
+          setTimeout(() => {
+            // Random Position in view frustum (approx)
+            const x = (Math.random() - 0.5) * 40;
+            const y = (Math.random() - 0.5) * 20 + 5; // Slightly above center
+            const z = (Math.random() - 0.5) * 10;
+
+            const pos = new THREE.Vector3(x, y, z);
+            createFirework(pos);
+
+            // Show label (need screen coords)
+            // Project pos to screen
+            const pCopy = pos.clone();
+            pCopy.project(camera);
+            const nx = (pCopy.x * 0.5 + 0.5) * window.innerWidth;
+            const ny = (-(pCopy.y * 0.5) + 0.5) * window.innerHeight;
+            showFireworkLabel(nx, ny);
+          }, i * 200); // Stagger by 200ms
+        }
+      }
+
+      function setupLights() {
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const p1 = new THREE.PointLight(0xffd700, 50, 100);
+        p1.position.set(20, 20, 20);
+        scene.add(p1);
+        const p2 = new THREE.PointLight(0xff69b4, 30, 100);
+        p2.position.set(-20, -10, 20);
+        scene.add(p2);
+      }
+
+      // Global Helper for creation
+      const createPart = (pos, type, color, group, size = 0.4, emissiveInf = 1, opacity = 1.0) => {
+        const geo = new THREE.SphereGeometry(size, 8, 8);
+        const mat = new THREE.MeshStandardMaterial({
+          color: color,
+          emissive: color,
+          emissiveIntensity: emissiveInf,
+          metalness: 0.5,
+          roughness: 0.2,
+          transparent: opacity < 1.0,
+          opacity: opacity,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        group.add(mesh);
+        particleSystem.push(new Particle(mesh, pos, type));
+      };
+
+      let imageBatchId = 0;
+      const loadImageParticles = (url) => {
+        imageBatchId++;
+        const myBatchId = imageBatchId;
+
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = url;
+        img.onload = () => {
+          if (myBatchId !== imageBatchId) return;
+
+          // CLEANUP: Remove old CAKE particles
+          particleSystem = particleSystem.filter((p) => {
+            if (p.type === "CAKE") {
+              if (p.mesh.parent) p.mesh.parent.remove(p.mesh);
+              if (p.mesh.geometry) p.mesh.geometry.dispose();
+              if (p.mesh.material) p.mesh.material.dispose();
+              return false;
+            }
+            return true;
+          });
+          // Ensure the group is clean
+          while (cakeGroup.children.length > 0) {
+            cakeGroup.remove(cakeGroup.children[0]);
+          }
+
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+
+          // Limit canvas size for performance
+          const maxSize = 250;
+          let w = img.width;
+          let h = img.height;
+
+          if (w > h) {
+            if (w > maxSize) {
+              h *= maxSize / w;
+              w = maxSize;
+            }
+          } else {
+            if (h > maxSize) {
+              w *= maxSize / h;
+              h = maxSize;
+            }
+          }
+
+          canvas.width = w;
+          canvas.height = h;
+
+          ctx.drawImage(img, 0, 0, w, h);
+          const data = ctx.getImageData(0, 0, w, h).data;
+
+          // Target ~8000 particles (High Definition)
+          const samplingStep = Math.max(1, Math.floor(Math.sqrt((w * h) / 8000)));
+
+          const cx = w / 2;
+          const cy = h / 2;
+          // Scale to roughly Width 40 in world units
+          // 计算当前视角的可见宽度
+          const vFov = (camera.fov * Math.PI) / 180;
+          const visibleHeight = 2 * Math.tan(vFov / 2) * camera.position.z;
+          const visibleWidth = visibleHeight * (window.innerWidth / window.innerHeight);
+
+          // 设置为可见宽度的 80%
+          const worldScale = (visibleWidth * 0.6) / w;
+
+          // 1. Pre-calculate all valid pixels
+          const validPixels = [];
+
+          for (let y = 0; y < h; y += samplingStep) {
+            for (let x = 0; x < w; x += samplingStep) {
+              const i = (y * w + x) * 4;
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
+              const a = data[i + 3];
+
+              // Filter background (White/Transparent)
+              if (a > 128 && !(r > 230 && g > 230 && b > 230)) {
+                validPixels.push({ x, y, r, g, b });
+              }
+            }
+          }
+
+          // 2. Shuffle pixels for organic "reveal" effect (Fisher-Yates)
+          for (let i = validPixels.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [validPixels[i], validPixels[j]] = [validPixels[j], validPixels[i]];
+          }
+
+          // 3. Batched Creation Loop (Time Slicing)
+          let currentIndex = 0;
+          const BATCH_SIZE = 120; // Increased speed for higher particle count
+
+          const processBatch = () => {
+            if (myBatchId !== imageBatchId) return; // Stop if new selection
+
+            // On first batch, trigger loader removal
+            if (currentIndex === 0) {
+              const loader = document.getElementById("loader");
+              if (loader) {
+                loader.style.opacity = 0;
+                setTimeout(() => loader.remove(), 1000);
+              }
+            }
+
+            const limit = Math.min(validPixels.length, currentIndex + BATCH_SIZE);
+
+            for (let i = currentIndex; i < limit; i++) {
+              const p = validPixels[i];
+              const color = (p.r << 16) | (p.g << 8) | p.b;
+
+              // Position (Flip Y)
+              const px = (p.x - cx) * worldScale;
+              const py = -(p.y - cy) * worldScale;
+              const pz = (Math.random() - 0.5) * 2.0;
+
+              // Start Exploded
+              const startRandomRange = 100;
+              const startPos = new THREE.Vector3(
+                (Math.random() - 0.5) * startRandomRange,
+                (Math.random() - 0.5) * startRandomRange,
+                (Math.random() - 0.5) * startRandomRange,
+              );
+
+              // Target Position (Shifted up to be in center)
+              const targetPos = new THREE.Vector3(px, py + 15, pz);
+
+              createPart(startPos, "CAKE", color, cakeGroup, 0.15, 0.9, 1.0);
+
+              // Update Particle behavior
+              const part = particleSystem[particleSystem.length - 1];
+              part.posTarget.copy(targetPos);
+              part.mesh.position.copy(startPos);
+              // Slower arrival for effect
+              part.speed = 0.3 + Math.random() * 0.4;
+            }
+
+            currentIndex += BATCH_SIZE;
+
+            if (currentIndex < validPixels.length) {
+              requestAnimationFrame(processBatch);
+            }
+          };
+
+          // Start the stream
+          cakeLocalHeight = 35;
+          cakeLocalWidth = 40;
+
+          // Critical Fix: Force re-layout now that we have dimensions.
+          // Otherwise scale is Infinity (divide by zero) until user resizes window.
+          onWindowResize();
+
+          processBatch();
+        };
+      };
+
+      function createParticles() {
+        // Text scaled down by 30% (120 -> 84)
+        const happyPoints = getTextPoints("新年快乐", 90, CONFIG.particles.textSpacing);
+        const birthdayPoints = getTextPoints("马年大吉", 90, CONFIG.particles.textSpacing);
+
+        // 1. Text (Scaled 0.2)
+        happyPoints.forEach((p) =>
+          createPart(new THREE.Vector3(p.x, p.y + 8, 0), "TEXT", CONFIG.colors.gold, happyGroup, 0.2),
+        );
+        birthdayPoints.forEach((p) =>
+          createPart(new THREE.Vector3(p.x, p.y + 8, 0), "TEXT", CONFIG.colors.gold, birthdayGroup, 0.2),
+        );
+        happyLocalHeight = 16;
+        birthdayLocalHeight = 16;
+
+        // 2. Image Particles (Replaces Cake)
+        loadImageParticles("../horse1.jpg");
+        cakeGroup.rotation.y = 0;
+        cakeGroup.rotation.z = 0;
+      }
+
+      function setupPostProcessing() {
+        composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloom.threshold = 0.15;
+        bloom.strength = isMobile ? 0.8 : 1.4;
+        bloom.radius = 0.4;
+        composer.addPass(bloom);
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight);
+
+        // Resize UI Canvas
+        gestureCanvas.width = window.innerWidth;
+        gestureCanvas.height = window.innerHeight;
+
+        const distance = CONFIG.camera.z;
+        const vFov = (camera.fov * Math.PI) / 180;
+        const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+        const visibleWidth = visibleHeight * camera.aspect;
+
+        // 1. Text Scales (40% total height, split with 2% gap)
+        const gapH = visibleHeight * 0.01;
+        const textTotalTargetH = visibleHeight * 0.4 - gapH;
+
+        // Assume HAPPY and BIRTHDAY take equal half of that
+        const happyTargetH = textTotalTargetH / 2;
+        const bdayTargetH = textTotalTargetH / 2;
+
+        let hScale = happyTargetH / happyLocalHeight;
+        let bScale = bdayTargetH / birthdayLocalHeight;
+
+        // --- 新增逻辑：限制字体左右边距 (Width Constraint) ---
+        const estimatedTextOriginalWidth = 140;
+        const maxTextWidth = visibleWidth * 0.85; // 限制为屏幕宽度的 85%
+        const maxScaleByWidth = maxTextWidth / estimatedTextOriginalWidth;
+
+        hScale = Math.min(hScale, maxScaleByWidth);
+        bScale = Math.min(bScale, maxScaleByWidth);
+
+        happyGroup.scale.set(hScale, hScale, hScale);
+        birthdayGroup.scale.set(bScale, bScale, bScale);
+
+        // 2. Cake Scale (修复蛋糕变形逻辑)
+        // Increased by ~10% (0.4 -> 0.45)
+        const cakeTargetH = visibleHeight * 0.5;
+        // 手机上蛋糕可以大一点(0.60)，电脑上小一点(0.35) - Increased by 10-15%
+        const cakeWidthRatio = isMobile ? 0.6 : 0.4;
+        const cakeTargetW = visibleWidth * cakeWidthRatio;
+
+        const cakeScaleH = cakeTargetH / cakeLocalHeight;
+        const cakeScaleW = cakeTargetW / cakeLocalWidth;
+
+        // 均匀缩放：取较小值
+        const finalCakeScale = Math.min(cakeScaleH, cakeScaleW);
+
+        cakeGroup.scale.set(finalCakeScale, finalCakeScale, finalCakeScale);
+
+        // 3. Positioning
+        const topBoundary = visibleHeight / 2;
+        const topMargin = visibleHeight * 0.1;
+
+        // Happy Top
+        const hLocalTop = 8;
+        happyGroup.position.y = topBoundary - topMargin - hLocalTop * hScale;
+
+        // Birthday Top = Happy Bottom - Gap
+        // Happy bottom is approx happyGroup.y - (8 * hScale)
+        const hBottom = happyGroup.position.y - 8 * hScale;
+        const bLocalTop = 8;
+        birthdayGroup.position.y = hBottom - gapH - bLocalTop * bScale;
+
+        // Cake Positioning (Bottom 40%)
+        const cakeLocalTop = 35; // Peak of particles (approx 15 + 20)
+        cakeGroup.position.y = topBoundary - visibleHeight * 0.5 - cakeLocalTop * finalCakeScale + 5; // +5 slight adjust up
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        TWEEN.update();
+        const dt = clock.getDelta();
+        const time = clock.elapsedTime;
+
+        particleSystem.forEach((p) => p.update(dt, time));
+        updateLanterns(dt, time);
+
+        // Update Rockets
+        for (let i = rockets.length - 1; i >= 0; i--) {
+          const r = rockets[i];
+          // Move up
+          r.mesh.position.addScaledVector(r.velocity, dt);
+
+          // Trail effect (optional, maybe just simple for now)
+
+          // Check if reached target
+          if (r.mesh.position.y >= r.targetY) {
+            createFirework(r.mesh.position); // Explode
+
+            // Remove rocket
+            scene.remove(r.mesh);
+            r.mesh.geometry.dispose();
+            r.mesh.material.dispose();
+            rockets.splice(i, 1);
+          }
+        }
+
+        composer.render();
+      }
+
+      function launchAutoFirework() {
+        // Calculate visual center of text
+        // Text particles are at local Y+8. Global Y = group.y + (8 * scale)
+        // But scale is applied to group.
+        // Simplified: Happy group Y is roughly top text line. Birthday group is bottom line.
+        // We want the middle.
+        const hY = happyGroup.position.y;
+        const bY = birthdayGroup.position.y;
+        // Best guess for "middle of block": Average of group origins + roughly 8 offset
+        // Actually, let's just use the average of the two group positions plus a small offset for the text height
+        const targetY = (hY + bY) / 2 + 5;
+
+        // Start from bottom (visible height is approx 47 at z=65)
+        // We spawn at -30 to be safe off-screen
+        const startY = -30;
+
+        const geo = new THREE.SphereGeometry(0.2, 8, 8);
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          emissive: 0xffffff,
+          emissiveIntensity: 2.0,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(0, startY, 0);
+        scene.add(mesh);
+
+        rockets.push({
+          mesh: mesh,
+          targetY: 12, // User override: Force roughly center (computed targetY might be unreliable if not resized yet)
+          velocity: new THREE.Vector3(0, 35, 0), // Fast speed
+        });
+      }
+
+      // Music Control
+      const audio = document.getElementById("bg-music");
+      const btnMusic = document.getElementById("btn-music");
+      btnMusic.onclick = () => {
+        if (audio.paused) {
+          audio.play();
+          btnMusic.style.color = "#fff";
+          btnMusic.style.background = "rgba(212, 175, 55, 0.4)";
+        } else {
+          audio.pause();
+          btnMusic.style.color = "#d4af37";
+          btnMusic.style.background = "rgba(20, 20, 20, 0.6)";
+        }
+      };
+
+      // 自动播放处理
+      document.addEventListener(
+        "click",
+        () => {
+          if (audio.paused) {
+            audio.play();
+            btnMusic.style.color = "#fff";
+            btnMusic.style.background = "rgba(212, 175, 55, 0.4)";
+          }
+        },
+        { once: true },
+      );
+
+      init();
+    </script>
+
+    <div
+      id="wechat-promo"
+      style="
+        position: absolute;
+        bottom: 10px;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        z-index: 90;
+        pointer-events: none;
+        color: rgba(255, 255, 255, 0.35);
+        font-family: &quot;Cinzel&quot;, serif;
+        font-size: 12px;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+      "
+    >
+      <p style="margin: 3px 0; color: rgba(212, 175, 55, 0.5); font-weight: 600">AI 偕行 · 微信服务号</p>
+      <p style="margin: 2px 0">📘 完整功能介绍，尽在「AI 偕行」</p>
+      <p style="margin: 2px 0">🔍 更多进阶玩法，欢迎关注查看</p>
+    </div>
+  </body>
+</html>

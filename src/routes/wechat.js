@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const xml2js = require("xml2js");
 const generatorService = require("../services/generatorService");
 const birthdayService = require("../services/birthdayService");
+const newYearService = require("../services/newYearService");
 const config = require("../config");
 const logger = require("../utils/logger");
 
@@ -54,6 +55,7 @@ router.post("/", async (req, res) => {
           // 定义触发前缀 (支持中文冒号和英文冒号，或者空格)
           const treeRegex = /^(圣诞树|tree)[:：\s]*/i;
           const birthdayRegex = /^(生日|birthday)[:：\s]*/i;
+          const newYearRegex = /^(新年|new year)[:：\s]*/i;
 
           if (treeRegex.test(userContent)) {
             // --- 圣诞树逻辑 ---
@@ -120,7 +122,41 @@ router.post("/", async (req, res) => {
               </xml>
             `;
 
-          } else {
+          }
+          else if (newYearRegex.test(userContent)) {
+            // --- 新年逻辑 ---
+            const wishText = userContent.replace(newYearRegex, "").trim();
+            const finalText = wishText || "新年快乐！";
+
+            const generateResult = await newYearService.generate({
+              text: finalText,
+              config: { from: "wechat", theme: "newyear" },
+            });
+
+            // New Year themed image
+            const picUrl = `https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=900&q=80`;
+
+            logger.info("WeChat New Year Reply", { targetUrl: generateResult.url, wishText: finalText });
+
+            replyXml = `
+              <xml>
+                <ToUserName><![CDATA[${openId}]]></ToUserName>
+                <FromUserName><![CDATA[${myId}]]></FromUserName>
+                <CreateTime>${Math.floor(Date.now() / 1000)}</CreateTime>
+                <MsgType><![CDATA[news]]></MsgType>
+                <ArticleCount>1</ArticleCount>
+                <Articles>
+                  <item>
+                    <Title><![CDATA[🎉 新年快乐｜送你一份专属新年祝福]]></Title>
+                    <Description><![CDATA[${finalText}\n点击打开新年祝福 🎁]]></Description>
+                    <PicUrl><![CDATA[${picUrl}]]></PicUrl>
+                    <Url><![CDATA[${generateResult.url}]]></Url>
+                  </item>
+                </Articles>
+              </xml>
+            `;
+          }
+          else {
             // 3. 不符合前缀，回复引导语 (Text)
             const replyContent = `欢迎关注 AI 偕行！\n\n回复【圣诞树：祝福语】\n生成3D圣诞树贺卡 🎄\n\n回复【生日：祝福语】\n生成专属生日祝福网页 🎂\n\n例如：\n圣诞树：圣诞快乐！\n生日：永远18岁！`;
             replyXml = `
