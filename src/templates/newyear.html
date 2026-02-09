@@ -1993,7 +1993,8 @@
 
         // --- 新增逻辑：限制字体左右边距 (Width Constraint) ---
         // 优化：手机竖屏下允许字体更宽 (0.96)，充分利用屏幕
-        const estimatedTextOriginalWidth = 140;
+        // 修正估算宽度：原先估计 140 过大，实际文字世界宽度约 60-70。调整参数以允许更大缩放
+        const estimatedTextOriginalWidth = 70;
         const widthRatio = isPortrait ? 0.96 : 0.85; 
         const maxTextWidth = visibleWidth * widthRatio;
         const maxScaleByWidth = maxTextWidth / estimatedTextOriginalWidth;
