@@ -1063,28 +1063,29 @@
             "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm",
           );
           
-          try {
+          // try {
             handLandmarker = await HandLandmarker.createFromOptions(vision, {
               baseOptions: {
                 modelAssetPath:
-                  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-                delegate: "GPU",
-              },
-              runningMode: "VIDEO",
-              numHands: 1,
-            });
-          } catch (gpuError) {
-            console.warn("MediaPipe GPU init failed, trying CPU fallback...", gpuError);
-            handLandmarker = await HandLandmarker.createFromOptions(vision, {
-              baseOptions: {
-                modelAssetPath:
-                  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                  "https://aiforus.tech/generated/mediapipe/hand_landmarker.task",
                 delegate: "CPU",
               },
               runningMode: "VIDEO",
               numHands: 1,
             });
-          }
+          // } 
+          // catch (gpuError) {
+          //   console.warn("MediaPipe GPU init failed, trying CPU fallback...", gpuError);
+          //   handLandmarker = await HandLandmarker.createFromOptions(vision, {
+          //     baseOptions: {
+          //       modelAssetPath:
+          //         "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+          //       delegate: "CPU",
+          //     },
+          //     runningMode: "VIDEO",
+          //     numHands: 1,
+          //   });
+          // }
 
           // Start Webcam (Updated Logic)
           if (navigator.mediaDevices?.getUserMedia) {
