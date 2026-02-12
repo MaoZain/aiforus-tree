@@ -134,7 +134,7 @@ router.post("/", async (req, res) => {
             });
 
             // New Year themed image
-            const picUrl = `https://img0.baidu.com/it/u=4071474506,1070845091&fm=253&fmt=auto&app=120&f=JPEG?w=439&h=246`;
+            const picUrl = `https://preview.qiantucdn.com/58pic/74/15/79/52c58PIC5ijuPQIvRAtwA_origin_PIC2018.png!qt_h320`;
 
             logger.info("WeChat New Year Reply", { targetUrl: generateResult.url, wishText: finalText });
 
