@@ -55,7 +55,7 @@ router.post("/", async (req, res) => {
           // 定义触发前缀 (支持中文冒号和英文冒号，或者空格)
           const treeRegex = /^(圣诞树|tree)[:：\s]*/i;
           const birthdayRegex = /^(生日|birthday)[:：\s]*/i;
-          const newYearRegex = /^(新年|new year)[:：\s]*/i;
+          const newYearRegex = /^(新春|chinese new year)[:：\s]*/i;
 
           if (treeRegex.test(userContent)) {
             // --- 圣诞树逻辑 ---
