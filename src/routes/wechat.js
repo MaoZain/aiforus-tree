@@ -147,8 +147,8 @@ router.post("/", async (req, res) => {
                 <ArticleCount>1</ArticleCount>
                 <Articles>
                   <item>
-                    <Title><![CDATA[🎉 新年快乐｜送你一份专属新年祝福]]></Title>
-                    <Description><![CDATA[${finalText}\n点击打开新年祝福 🎁]]></Description>
+                    <Title><![CDATA[🎉 新春快乐｜送你一份专属新春祝福]]></Title>
+                    <Description><![CDATA[${finalText}\n点击打开新春祝福 🎁]]></Description>
                     <PicUrl><![CDATA[${picUrl}]]></PicUrl>
                     <Url><![CDATA[${generateResult.url}]]></Url>
                   </item>
