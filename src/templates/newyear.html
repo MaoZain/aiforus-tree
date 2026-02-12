@@ -815,7 +815,7 @@
         "../newyearconfig/horse5.jpg",
         "../newyearconfig/horse6.jpg",
       ];
-      let currentImageIndex = 3; // Default starting at horse4 based on previous code
+      let currentImageIndex = 0; // Default starting at horse1 to match createParticles
       let isSwitchingImage = false; // Lock to prevent multi-trigger
 
       let gestureFireworkCount = 0; // Counter for grand finale
@@ -1390,7 +1390,7 @@
       function switchHorseImage() {
         currentImageIndex = (currentImageIndex + 1) % HORSE_IMAGES.length;
         console.log("Switching to image index:", currentImageIndex);
-        loadImageParticles("../newyearconfig/horse1.jpg");
+        loadImageParticles(HORSE_IMAGES[currentImageIndex]);
       }
 
       function drawThumbHoverUI(x, y, progress) {
@@ -1888,7 +1888,7 @@
           const data = ctx.getImageData(0, 0, w, h).data;
 
           // Target ~15000+ particles (High Density: 6k/8k -> 15k/20k)
-          const particlesTarget = isMobile ? 12000 : 20000;
+          const particlesTarget = isMobile ? 10000 : 20000;
           const samplingStep = Math.max(1, Math.floor(Math.sqrt((w * h) / particlesTarget)));
 
           const cx = w / 2;
