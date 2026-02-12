@@ -134,7 +134,7 @@ router.post("/", async (req, res) => {
             });
 
             // New Year themed image
-            const picUrl = `https://aiforus.tech/generated/newyearconfig/horse6.jpg`;
+            const picUrl = `https://plus.unsplash.com/premium_photo-1681398690947-cf7cad1cdfff??auto=format&fit=crop&w=900&q=80`;
 
             logger.info("WeChat New Year Reply", { targetUrl: generateResult.url, wishText: finalText });
 
