@@ -655,7 +655,7 @@
         const audio = document.getElementById("bg-music");
         const btn = document.getElementById("btn-music");
         let isToggling = false; // 播放状态锁，防止并发操作导致 AbortError
-        const MUSIC_URL = "/assets/newyearconfig/newyear.mp3";
+        const MUSIC_URL = "../newyearconfig/newyear.mp3";
 
         const updateState = () => {
           if (audio.paused) {
@@ -1097,7 +1097,7 @@
             handLandmarker = await HandLandmarker.createFromOptions(vision, {
               baseOptions: {
                 modelAssetPath:
-                  "https://aiforus.tech/generated/mediapipe/hand_landmarker.task",
+                  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
                 delegate: "GPU",
               }, //https://aiforus.tech/generated/mediapipe/hand_landmarker.task
               runningMode: "VIDEO",
@@ -1109,8 +1109,7 @@
             handLandmarker = await HandLandmarker.createFromOptions(vision, {
               baseOptions: {
                 modelAssetPath:
-                "https://aiforus.tech/generated/mediapipe/hand_landmarker.task",
-                  // "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
                 delegate: "CPU",
               },
               runningMode: "VIDEO",
@@ -2248,33 +2247,7 @@
         });
       }
 
-      // Music Control
-      const audio = document.getElementById("bg-music");
-      const btnMusic = document.getElementById("btn-music");
-      btnMusic.onclick = () => {
-        if (audio.paused) {
-          audio.play();
-          btnMusic.style.color = "#fff";
-          btnMusic.style.background = "rgba(212, 175, 55, 0.4)";
-        } else {
-          audio.pause();
-          btnMusic.style.color = "#d4af37";
-          btnMusic.style.background = "rgba(20, 20, 20, 0.6)";
-        }
-      };
 
-      // 自动播放处理
-      document.addEventListener(
-        "click",
-        () => {
-          if (audio.paused) {
-            audio.play();
-            btnMusic.style.color = "#fff";
-            btnMusic.style.background = "rgba(212, 175, 55, 0.4)";
-          }
-        },
-        { once: true },
-      );
 
       init();
     </script>
