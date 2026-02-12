@@ -158,7 +158,7 @@ router.post("/", async (req, res) => {
           }
           else {
             // 3. 不符合前缀，回复引导语 (Text)
-            const replyContent = `欢迎关注 AI 偕行！\n\n回复【圣诞树：祝福语】\n生成3D圣诞树贺卡 🎄\n\n回复【生日：祝福语】\n生成专属生日祝福网页 🎂\n\n例如：\n圣诞树：圣诞快乐！\n生日：永远18岁！`;
+            const replyContent = `欢迎关注 AI 偕行！\n\n回复【圣诞树：祝福语】\n生成3D圣诞树贺卡 🎄\n\n回复【生日：祝福语】\n生成专属生日祝福网页 🎂\n\n回复【新春：祝福语】\n生成专属新春祝福网页 🎉\n\n例如：\n圣诞树：圣诞快乐！\n生日：永远18岁！\n新春：新春快乐！`;
             replyXml = `
               <xml>
                 <ToUserName><![CDATA[${openId}]]></ToUserName>
