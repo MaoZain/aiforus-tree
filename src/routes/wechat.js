@@ -134,7 +134,7 @@ router.post("/", async (req, res) => {
             });
 
             // New Year themed image
-            const picUrl = `https://aiforus-download.oss-us-west-1.aliyuncs.com/test1.jpg`;
+            const picUrl = `https://aiforustree1.oss-cn-beijing.aliyuncs.com/test1.jpg`;
 
             logger.info("WeChat New Year Reply", { targetUrl: generateResult.url, wishText: finalText });
 
