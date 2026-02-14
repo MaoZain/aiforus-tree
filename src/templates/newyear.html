@@ -1888,7 +1888,7 @@
           const data = ctx.getImageData(0, 0, w, h).data;
 
           // Target ~15000+ particles (High Density: 6k/8k -> 15k/20k)
-          const particlesTarget = isMobile ? 10000 : 20000;
+          const particlesTarget = isMobile ? 12000 : 20000;
           const samplingStep = Math.max(1, Math.floor(Math.sqrt((w * h) / particlesTarget)));
 
           const cx = w / 2;
@@ -2122,7 +2122,9 @@
 
         // Cake Positioning (Bottom 40%)
         const cakeLocalTop = 35; // Peak of particles (approx 15 + 20)
-        cakeGroup.position.y = topBoundary - visibleHeight * 0.5 - cakeLocalTop * finalCakeScale + 5; // +5 slight adjust up
+        // 粒子图位置垂直微调，数值越大越靠上。手机端调高一点以拉近与文字距离
+        const yOffset = isMobile ? 10 : 5; 
+        cakeGroup.position.y = topBoundary - visibleHeight * 0.5 - cakeLocalTop * finalCakeScale + yOffset;
       }
 
       // Performance Monitor Globals
@@ -2164,7 +2166,7 @@
         }
 
         // Optimized Update Loop
-        const updateLimit = particlesReduced ? 6000 : particleSystem.length;
+        const updateLimit = particlesReduced ? 10000 : particleSystem.length;
         const activeCount = Math.min(updateLimit, particleSystem.length);
         
         for(let i=0; i < activeCount; i++) {
